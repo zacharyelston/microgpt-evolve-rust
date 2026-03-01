@@ -3,11 +3,12 @@
 > A minimal GPT that evolves itself.
 
 ```
-Hydra Evolution (v3) — 3 Heads, 5 Cycles, Parallel Execution
+Hydra Evolution (v3) — 4 Heads, 5 Cycles, Parallel Execution
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [Weaver] Champion: Emb:32 Head:4 Lay:2 LR:0.0051 -> Score: 0.82 (Flow)
   [Mirror] Champion: Emb:24 Head:2 Lay:3 LR:0.0082 -> Score: 4.50 (Symmetry)
   [Spark]  Champion: Emb:40 Head:4 Lay:1 LR:0.0120 -> Score: 2.50 (Creativity)
+  [Origin] Champion: Emb:32 Head:4 Lay:2 LR:0.0015 -> Score: 0.65 (Loss)
 
   >> The Gathering: Genes exchanged. The organism learns from all heads.
 ```
@@ -34,7 +35,7 @@ A self-modifying Transformer implementation in Rust with zero ML dependencies. S
 ```
 
 1. **Primordial**: Run `cargo run --release` — the creature runs with hardcoded defaults. It works, but it hasn't found itself yet.
-2. **Evolution**: Run `cargo run --release --bin hydra` — The **Hydra** engine awakens. Three distinct heads (Weaver, Mirror, Spark) evolve independently, optimizing for different aesthetic goals. They synchronize periodically to exchange genetic breakthroughs.
+2. **Evolution**: Run `cargo run --release --bin hydra` — The **Hydra** engine awakens. Four distinct heads (Weaver, Mirror, Spark, Origin) evolve independently, optimizing for different aesthetic goals. They synchronize periodically to exchange genetic breakthroughs.
 3. **Self-modification**: The winner's DNA is written to `genome.json`. The program has rewritten itself.
 4. **Evolved**: Now `cargo run --release` reads the genome and runs as the evolved creature — different architecture, different learning rate, different capacity. A new thing.
 
@@ -67,6 +68,7 @@ The engine mimics a Hydra — a multi-headed evolutionary organism. Instead of a
 1. **The Weaver** (Flow): Optimizes for pronounceability, vowel/consonant rhythm, and linguistic smoothness.
 2. **The Mirror** (Symmetry): Optimizes for palindromes, repeating structures, and balanced patterns.
 3. **The Spark** (Creativity): Optimizes for pure novelty and deviation from the training data.
+4. **The Origin** (Loss): Optimizes for pure predictive accuracy (minimizing training loss), preserving the original MicroGPT goal.
 
 **The Cycle:**
 1. **Isolation**: Heads evolve independently for N generations.

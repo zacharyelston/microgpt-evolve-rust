@@ -121,6 +121,7 @@ impl Genome {
             Objective::Weaver => calculate_flow(&result.names),
             Objective::Mirror => calculate_symmetry(&result.names),
             Objective::Spark => calculate_creativity(&result.names, training_data),
+            Objective::Origin => 1.0 / result.final_loss.max(0.0001), // Minimize loss
         };
 
         self.names = result.names;
@@ -135,6 +136,7 @@ enum Objective {
     Weaver, // Flow
     Mirror, // Symmetry
     Spark,  // Creativity
+    Origin, // Loss (The Original MicroGPT Goal)
 }
 
 struct HydraHead {
@@ -315,7 +317,7 @@ fn main() {
     println!("╔══════════════════════════════════════════════════╗");
     println!("║       MicroGPT Hydra: Multi-Head Evolution       ║");
     println!("╚══════════════════════════════════════════════════╝");
-    println!("Heads: Weaver (Flow), Mirror (Symmetry), Spark (Creativity)");
+    println!("Heads: Weaver (Flow), Mirror (Symmetry), Spark (Creativity), Origin (Loss)");
     println!("Pop per Head: {}, Cycles: {}, Gens/Cycle: {}", POPULATION_PER_HEAD, CYCLES, HEAD_GENERATIONS);
 
     // Load Data
@@ -332,6 +334,7 @@ fn main() {
         HydraHead::new(Objective::Weaver, "Weaver"),
         HydraHead::new(Objective::Mirror, "Mirror"),
         HydraHead::new(Objective::Spark,  "Spark"),
+        HydraHead::new(Objective::Origin, "Origin"),
     ];
 
     for cycle in 0..CYCLES {
