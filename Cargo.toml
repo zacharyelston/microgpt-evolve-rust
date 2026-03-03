@@ -4,10 +4,69 @@ version = "0.1.0"
 edition = "2021"
 default-run = "microgpt_rust"
 
+[[bin]]
+name = "gpu_test"
+path = "src/gpu_test.rs"
+
+[[bin]]
+name = "evolve_loss_v2"
+path = "src/bin/evolve_loss_v2.rs"
+
+[[bin]]
+name = "evolve_loss_cpu"
+path = "src/bin/evolve_loss_cpu.rs"
+
+[[bin]]
+name = "evolve_loss_gpu"
+path = "src/bin/evolve_loss_gpu.rs"
+
+[[bin]]
+name = "test_gpu_isolated"
+path = "src/bin/test_gpu_isolated.rs"
+
+[[bin]]
+name = "evolve_loss_gpu_integrated"
+path = "src/bin/evolve_loss_gpu_integrated.rs"
+
+[[bin]]
+name = "evolve_loss_gpu_small_emb"
+path = "src/bin/evolve_loss_gpu_small_emb.rs"
+
+[[bin]]
+name = "evolve_genesis"
+path = "src/bin/evolve_genesis.rs"
+
+[[bin]]
+name = "evolve_genesis_config"
+path = "src/bin/evolve_genesis_config.rs"
+
+[[bin]]
+name = "test_best_genesis"
+path = "src/bin/test_best_genesis.rs"
+
+[[bin]]
+name = "evolve_aesthetic_gpu"
+path = "src/bin/evolve_aesthetic_gpu.rs"
+
+[[bin]]
+name = "parameter_sweep_1_4"
+path = "src/bin/parameter_sweep_1_4.rs"
+
+[[bin]]
+name = "parameter_sweep_1_10"
+path = "src/bin/parameter_sweep_1_10.rs"
+
 [dependencies]
 rand = "0.8"
 rayon = "1.10"
 chrono = "0.4"
+cudarc = { version = "0.12", features = ["cuda-12000"], optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[features]
+default = []
+gpu = ["cudarc"]
 
 [profile.release]
 opt-level = 3

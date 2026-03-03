@@ -53,6 +53,21 @@ struct Genome {
 }
 
 impl Genome {
+    fn from_config(config: &TrainingConfig) -> Self {
+        Genome {
+            n_emb: config.n_emb,
+            n_head: config.n_head,
+            n_layer: config.n_layer,
+            n_ctx: config.n_ctx,
+            n_ff_exp: config.n_ff_exp,
+            lr: config.lr,
+            steps: config.steps,
+            loss: f64::MAX,
+            evaluated: false,
+            origin: "genome".to_string(),
+        }
+    }
+
     fn new_random() -> Self {
         let mut rng = rand::thread_rng();
         let n_emb = *[8, 12, 16, 20, 24, 32].choose(&mut rng).unwrap();
@@ -396,9 +411,43 @@ fn main() {
     }
     load_training_data(INPUT_FILE);
 
-    let mut population: Vec<Genome> = (0..POPULATION_SIZE).map(|_| Genome::new_random()).collect();
-    let mut best_ever = Genome::new_random();
-    best_ever.loss = f64::MAX;
+    // Load existing genome if available - start from it instead of random
+    let (base_config, base_loss, base_gen) = TrainingConfig::load_genome()
+        .unwrap_or_else(|| (TrainingConfig::default(), f64::MAX, 0));
+    
+    println!("Starting evolution from genome: loss {:.6} (generation {})", base_loss, base_gen);
+    
+    // Create initial population: include the existing genome + variations around it
+    let mut population: Vec<Genome> = Vec::with_capacity(POPULATION_SIZE);
+    
+    // Always include the existing genome as first organism (if not default)
+    if base_loss < f64::MAX {
+        let mut base_genome = Genome::from_config(&base_config);
+        base_genome.loss = base_loss;
+        base_genome.evaluated = true; // Don't re-evaluate the base genome
+        population.push(base_genome);
+        println!("Added existing genome to population (loss: {:.6})", base_loss);
+    }
+    
+    // Fill the rest with variations around the base config
+    while population.len() < POPULATION_SIZE {
+        if base_loss < f64::MAX && population.len() < POPULATION_SIZE / 2 {
+            // Create mutations of the base genome
+            let mut mutant = Genome::from_config(&base_config);
+            mutant.mutate(); // Small mutations around base
+            population.push(mutant);
+        } else {
+            // Add some random diversity
+            population.push(Genome::new_random());
+        }
+    }
+    
+    let mut best_ever = if base_loss < f64::MAX {
+        population[0].clone()
+    } else {
+        Genome::new_random()
+    };
+    best_ever.loss = base_loss;
     let mut history: Vec<HistoryEntry> = Vec::new();
     let mut gen_bests: Vec<(usize, f64, f64)> = Vec::new();
     let total_start = Instant::now();
@@ -500,13 +549,20 @@ fn main() {
 
                 let mut new_pop: Vec<Genome> = Vec::with_capacity(POPULATION_SIZE);
 
-                // Re-evaluate the elite (remove frozen advantage)
+                // Re-evaluate the elite (remove frozen advantage) - but NOT if it's the original genome
                 let mut elite = population[0].clone();
-                elite.origin = "re-eval".to_string();
-                elite.evaluated = false;
-                elite.loss = f64::MAX;
+                let is_original_genome = population[0].origin == "genome" && population[0].loss < 2.0;
+                
+                if !is_original_genome {
+                    elite.origin = "re-eval".to_string();
+                    elite.evaluated = false;
+                    elite.loss = f64::MAX;
+                    eprintln!("[breed] elite forced re-eval: {}", population[0].desc());
+                } else {
+                    elite.origin = "preserved".to_string();
+                    eprintln!("[breed] elite preserved (original genome): {}", population[0].desc());
+                }
                 new_pop.push(elite);
-                eprintln!("[breed] elite forced re-eval: {}", population[0].desc());
 
                 // Growth mutation: the winner earns a structural upgrade
                 let mut grown = population[0].clone();

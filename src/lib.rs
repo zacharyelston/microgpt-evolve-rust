@@ -144,8 +144,15 @@ pub fn mat(r: usize, c: usize, scale: f64) -> Mat2 {
     (0..r).map(|_| (0..c).map(|_| Val::new(rng.gen_range(-1.0..1.0) * scale)).collect()).collect()
 }
 
+// Include the isolated GPU acceleration module
+pub mod gpu_accel;
+
+// Include the evolution configuration system
+pub mod evolution_config;
+
 // Matrix-vector multiply: each row of w dotted with x
 pub fn linear(x: &[Val], w: &Mat2) -> Vec1 {
+    // Always use CPU version for now - GPU is isolated for testing
     w.iter().map(|row| row.iter().zip(x).map(|(w, x)| w * x).fold(Val::new(0.), |a, b| a + b)).collect()
 }
 
@@ -305,8 +312,119 @@ impl Default for TrainingConfig {
 // ============================================================
 
 impl TrainingConfig {
+    // Configuration limits for validation
+    pub const MIN_N_EMB: usize = 1;
+    pub const MAX_N_EMB: usize = 128;
+    
+    pub const MIN_N_CTX: usize = 1;
+    pub const MAX_N_CTX: usize = 256;
+    
+    pub const MIN_N_LAYER: usize = 1;
+    pub const MAX_N_LAYER: usize = 12;
+    
+    pub const MIN_N_HEAD: usize = 1;
+    pub const MAX_N_HEAD: usize = 16;
+    
+    pub const MIN_N_FF_EXP: usize = 1;
+    pub const MAX_N_FF_EXP: usize = 8;
+    
+    pub const MIN_LR: f64 = 1e-6;
+    pub const MAX_LR: f64 = 1.0;
+    
+    pub const MIN_STEPS: usize = 50;
+    pub const MAX_STEPS: usize = 10000;
+    
+    // Validate the configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if self.n_emb < Self::MIN_N_EMB || self.n_emb > Self::MAX_N_EMB {
+            return Err(format!("n_emb must be between {} and {}, got {}", 
+                Self::MIN_N_EMB, Self::MAX_N_EMB, self.n_emb));
+        }
+        
+        if self.n_ctx < Self::MIN_N_CTX || self.n_ctx > Self::MAX_N_CTX {
+            return Err(format!("n_ctx must be between {} and {}, got {}", 
+                Self::MIN_N_CTX, Self::MAX_N_CTX, self.n_ctx));
+        }
+        
+        if self.n_layer < Self::MIN_N_LAYER || self.n_layer > Self::MAX_N_LAYER {
+            return Err(format!("n_layer must be between {} and {}, got {}", 
+                Self::MIN_N_LAYER, Self::MAX_N_LAYER, self.n_layer));
+        }
+        
+        if self.n_head < Self::MIN_N_HEAD || self.n_head > Self::MAX_N_HEAD {
+            return Err(format!("n_head must be between {} and {}, got {}", 
+                Self::MIN_N_HEAD, Self::MAX_N_HEAD, self.n_head));
+        }
+        
+        if self.n_ff_exp < Self::MIN_N_FF_EXP || self.n_ff_exp > Self::MAX_N_FF_EXP {
+            return Err(format!("n_ff_exp must be between {} and {}, got {}", 
+                Self::MIN_N_FF_EXP, Self::MAX_N_FF_EXP, self.n_ff_exp));
+        }
+        
+        if self.lr < Self::MIN_LR || self.lr > Self::MAX_LR {
+            return Err(format!("lr must be between {:.6} and {:.6}, got {:.6}", 
+                Self::MIN_LR, Self::MAX_LR, self.lr));
+        }
+        
+        if self.steps < Self::MIN_STEPS || self.steps > Self::MAX_STEPS {
+            return Err(format!("steps must be between {} and {}, got {}", 
+                Self::MIN_STEPS, Self::MAX_STEPS, self.steps));
+        }
+        
+        // Additional consistency checks
+        if self.n_emb % self.n_head != 0 {
+            return Err(format!("n_emb ({}) must be divisible by n_head ({})", 
+                self.n_emb, self.n_head));
+        }
+        
+        if self.n_head > self.n_emb {
+            return Err(format!("n_head ({}) cannot be greater than n_emb ({})", 
+                self.n_head, self.n_emb));
+        }
+        
+        Ok(())
+    }
+    
+    // Clamp values to valid ranges
+    pub fn clamp(&mut self) {
+        self.n_emb = self.n_emb.clamp(Self::MIN_N_EMB, Self::MAX_N_EMB);
+        self.n_ctx = self.n_ctx.clamp(Self::MIN_N_CTX, Self::MAX_N_CTX);
+        self.n_layer = self.n_layer.clamp(Self::MIN_N_LAYER, Self::MAX_N_LAYER);
+        self.n_head = self.n_head.clamp(Self::MIN_N_HEAD, Self::MAX_N_HEAD);
+        self.n_ff_exp = self.n_ff_exp.clamp(Self::MIN_N_FF_EXP, Self::MAX_N_FF_EXP);
+        self.lr = self.lr.clamp(Self::MIN_LR, Self::MAX_LR);
+        self.steps = self.steps.clamp(Self::MIN_STEPS, Self::MAX_STEPS);
+        
+        // Fix consistency issues
+        if self.n_head > self.n_emb {
+            self.n_head = self.n_emb;
+        }
+        
+        // Make n_emb divisible by n_head
+        if self.n_emb % self.n_head != 0 {
+            self.n_emb = (self.n_emb / self.n_head) * self.n_head;
+            if self.n_emb == 0 {
+                self.n_emb = self.n_head;
+            }
+        }
+    }
+    
+    // Check if configuration is reasonable for training
+    pub fn is_reasonable(&self) -> bool {
+        self.validate().is_ok()
+    }
+
     // Serialize the evolved hyperparameters to genome.json
+    // Only saves if the new loss is better than the existing one
     pub fn save_genome(&self, loss: f64, generation: usize) -> std::io::Result<()> {
+        // Check if there's an existing genome and if we're better
+        if let Some((_, existing_loss, _)) = Self::load_genome() {
+            if loss >= existing_loss {
+                println!("Not saving genome: new loss ({:.6}) not better than existing ({:.6})", loss, existing_loss);
+                return Ok(());
+            }
+        }
+        
         let json = format!(
             "{{\n  \"n_emb\": {},\n  \"n_ctx\": {},\n  \"n_layer\": {},\n  \"n_head\": {},\n  \"n_ff_exp\": {},\n  \"steps\": {},\n  \"lr\": {},\n  \"loss\": {},\n  \"generation\": {},\n  \"evolved\": true\n}}",
             self.n_emb, self.n_ctx, self.n_layer, self.n_head, self.n_ff_exp,
