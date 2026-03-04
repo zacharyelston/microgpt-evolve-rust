@@ -17,6 +17,11 @@
 use rand::Rng;
 use std::{cell::RefCell, collections::HashSet, io::Write, ops::{Add, Mul, Neg, Sub}, rc::Rc};
 
+pub mod heads;
+pub mod genome;
+
+pub use genome::Genome;
+
 // ============================================================
 // I. The Atom: Value & Autograd
 //
