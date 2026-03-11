@@ -193,8 +193,10 @@ fn main() {
         // 4. Exchange
         let mut exchange_pool = Vec::new();
         for head in &heads {
-            exchange_pool.push(head.population[0].clone());
-            exchange_pool.push(head.population[1].clone());
+            let count = head.population.len().min(2);
+            for i in 0..count {
+                exchange_pool.push(head.population[i].clone());
+            }
         }
         for i in 0..heads.len() {
             let mut incoming = Vec::new();

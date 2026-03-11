@@ -108,7 +108,9 @@ This mode runs lighter training steps per frame to maintain UI responsiveness, m
 ## Project Structure
 
 ```
-src/lib.rs              Autograd engine, GPT model, training loop, genome I/O
+src/lib.rs              Autograd engine, GPT model, training loop
+src/genome.rs           The Genome struct (hyperparameters as DNA)
+src/heads/              Modular Hydra heads (Weaver, Mirror, Spark, Origin)
 src/main.rs             The living creature — reads genome.json if it exists
 src/bin/hydra.rs        Multi-head evolution engine (Weaver, Mirror, Spark, Origin)
 src/bin/hydra_tui.rs    Interactive TUI Sandbox for classroom demonstration
