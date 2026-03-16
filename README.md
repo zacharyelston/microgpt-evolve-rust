@@ -48,6 +48,20 @@ A self-modifying Transformer implementation in Rust with zero ML dependencies. S
 3. **Self-modification**: The winner's DNA is written to `genome.json`. The program has rewritten itself.
 4. **Evolved**: Now `cargo run --release` reads the genome and runs as the evolved creature — different architecture, different learning rate, different capacity. A new thing.
 
+
+## Genome Registry (Collaborative)
+
+To share evolved genomes in-repo, use the registry under `genomes/`:
+
+- Submit the current winner (`genome.json`) to registry:
+  - `./scripts/genome_submit.sh --objective loss --author <name>`
+- Import a full `evolve_loss` run log for broader history:
+  - `./scripts/genome_import_loss_log.sh --log experiments/evolve_YYYYMMDD_HHMMSS.log --author <name>`
+- Activate any registered genome:
+  - `./scripts/genome_use.sh genomes/loss/<file>.json`
+
+This keeps `genome.json` as the active local genome while preserving a versioned, reviewable contribution history in Git.
+
 ## What's Inside
 
 ### I. The Atom: `Val`
