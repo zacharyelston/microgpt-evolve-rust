@@ -24,8 +24,22 @@ impl GpuAccelerator {
         })
     }
     
+    pub fn new_with_device(device_id: usize) -> Result<Self, Box<dyn std::error::Error>> {
+        let device = cudarc::driver::CudaDevice::new(device_id)?;
+        println!("🚀 GPU Accelerator Initialized on GPU {}: {}", device_id, device.name().unwrap_or("Unknown".to_string()));
+        
+        Ok(Self {
+            device,
+            initialized: true,
+        })
+    }
+    
     pub fn is_available(&self) -> bool {
         self.initialized
+    }
+    
+    pub fn gpu_name(&self) -> String {
+        self.device.name().unwrap_or("Unknown".to_string())
     }
     
     pub fn matrix_vector_multiply(&self, matrix: &[f32], rows: usize, cols: usize, vector: &[f32]) -> Result<Vec<f32>, Box<dyn std::error::Error>> {

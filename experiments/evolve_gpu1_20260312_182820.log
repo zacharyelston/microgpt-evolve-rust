@@ -1,0 +1,16 @@
+=== MicroGPT Loss Evolution Engine (GPU-Enhanced, Selectable) ===
+Experiment: experiments/evolve_gpu1_20260312_182820.log
+Target: loss < 1.0
+Population: 8, Generations: 5
+GPU Device: 1, Acceleration: GPU
+
+--- Generation 1/5 ---
+  Best: 1.2474 | Species: 5 | Stagnation: 0 | Blacklisted: 0 | 53s (GPU1)
+--- Generation 2/5 ---
+  Best: 1.2474 | Species: 7 | Stagnation: 1 | Blacklisted: 0 | 74s (GPU1)
+--- Generation 3/5 ---
+  Best: 1.2474 | Species: 8 | Stagnation: 2 | Blacklisted: 0 | 35s (GPU1)
+--- Generation 4/5 ---
+  Best: 1.2474 | Species: 7 | Stagnation: 3 | Blacklisted: 0 | 27s (GPU1)
+--- Generation 5/5 ---
+  Best: 1.2474 | Species: 7 | Stagnation: 4 | Blacklisted: 0 | 13s (GPU1)

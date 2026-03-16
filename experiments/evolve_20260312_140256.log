@@ -1,0 +1,305 @@
+=== MicroGPT Loss Evolution Engine (Large-Scale) ===
+Experiment: experiments/evolve_20260312_140256.log
+Target: loss < 1.0
+Population: 12, Generations: 100
+
+--- Generation 1/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 0 | Blacklisted: 0 | 296s
+
+--- Generation 2/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 1 | Blacklisted: 0 | 4s
+
+--- Generation 3/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 2 | Blacklisted: 1 | 21s
+
+--- Generation 4/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 3 | Blacklisted: 2 | 31s
+
+--- Generation 5/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 4 | Blacklisted: 2 | 25s
+
+--- Generation 6/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 5 | Blacklisted: 2 | 8s
+
+--- Generation 7/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 6 | Blacklisted: 2 | 58s
+
+--- Generation 8/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 7 | Blacklisted: 2 | 58s
+
+--- Generation 9/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 8 | Blacklisted: 2 | 70s
+
+--- Generation 10/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 9 | Blacklisted: 2 | 43s
+
+--- Generation 11/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 10 | Blacklisted: 2 | 58s
+
+--- Generation 12/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 11 | Blacklisted: 2 | 141s
+
+--- Generation 13/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 12 | Blacklisted: 2 | 5s
+
+--- Generation 14/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 13 | Blacklisted: 2 | 17s
+
+--- Generation 15/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 14 | Blacklisted: 2 | 43s
+
+--- Generation 16/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 15 | Blacklisted: 3 | 61s
+
+--- Generation 17/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 16 | Blacklisted: 4 | 14s
+
+--- Generation 18/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 17 | Blacklisted: 5 | 12s
+
+--- Generation 19/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 18 | Blacklisted: 5 | 11s
+
+--- Generation 20/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 19 | Blacklisted: 5 | 33s
+
+--- Generation 21/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 20 | Blacklisted: 5 | 118s
+
+--- Generation 22/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 21 | Blacklisted: 6 | 18s
+
+--- Generation 23/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 22 | Blacklisted: 6 | 68s
+
+--- Generation 24/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 23 | Blacklisted: 6 | 88s
+
+--- Generation 25/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 24 | Blacklisted: 6 | 11s
+
+--- Generation 26/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 25 | Blacklisted: 7 | 22s
+
+--- Generation 27/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 26 | Blacklisted: 7 | 30s
+
+--- Generation 28/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 27 | Blacklisted: 7 | 19s
+
+--- Generation 29/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 28 | Blacklisted: 7 | 11s
+
+--- Generation 30/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 29 | Blacklisted: 8 | 21s
+
+--- Generation 31/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 30 | Blacklisted: 8 | 14s
+
+--- Generation 32/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 31 | Blacklisted: 8 | 27s
+
+--- Generation 33/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 32 | Blacklisted: 8 | 25s
+
+--- Generation 34/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 33 | Blacklisted: 8 | 38s
+
+--- Generation 35/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 34 | Blacklisted: 8 | 39s
+
+--- Generation 36/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 35 | Blacklisted: 8 | 38s
+
+--- Generation 37/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 36 | Blacklisted: 8 | 19s
+
+--- Generation 38/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 37 | Blacklisted: 8 | 61s
+
+--- Generation 39/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 38 | Blacklisted: 8 | 62s
+
+--- Generation 40/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 39 | Blacklisted: 8 | 38s
+
+--- Generation 41/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 40 | Blacklisted: 9 | 27s
+
+--- Generation 42/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 41 | Blacklisted: 9 | 61s
+
+--- Generation 43/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 42 | Blacklisted: 9 | 33s
+
+--- Generation 44/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 43 | Blacklisted: 9 | 64s
+
+--- Generation 45/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 44 | Blacklisted: 9 | 31s
+
+--- Generation 46/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 45 | Blacklisted: 9 | 23s
+
+--- Generation 47/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 46 | Blacklisted: 9 | 50s
+
+--- Generation 48/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 47 | Blacklisted: 10 | 27s
+
+--- Generation 49/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 48 | Blacklisted: 10 | 54s
+
+--- Generation 50/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 49 | Blacklisted: 10 | 6s
+
+--- Generation 51/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 50 | Blacklisted: 10 | 7s
+
+--- Generation 52/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 51 | Blacklisted: 10 | 12s
+
+--- Generation 53/100 ---
+  Best: 1.4138 | Species: 9 | Stagnation: 52 | Blacklisted: 10 | 49s
+
+--- Generation 54/100 ---
+  Best: 1.4138 | Species: 9 | Stagnation: 53 | Blacklisted: 10 | 20s
+
+--- Generation 55/100 ---
+  Best: 1.4138 | Species: 9 | Stagnation: 54 | Blacklisted: 11 | 12s
+
+--- Generation 56/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 55 | Blacklisted: 11 | 37s
+
+--- Generation 57/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 56 | Blacklisted: 11 | 55s
+
+--- Generation 58/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 57 | Blacklisted: 11 | 18s
+
+--- Generation 59/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 58 | Blacklisted: 11 | 45s
+
+--- Generation 60/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 59 | Blacklisted: 11 | 20s
+
+--- Generation 61/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 60 | Blacklisted: 11 | 26s
+
+--- Generation 62/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 61 | Blacklisted: 11 | 14s
+
+--- Generation 63/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 62 | Blacklisted: 11 | 18s
+
+--- Generation 64/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 63 | Blacklisted: 11 | 31s
+
+--- Generation 65/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 64 | Blacklisted: 11 | 21s
+
+--- Generation 66/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 65 | Blacklisted: 11 | 11s
+
+--- Generation 67/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 66 | Blacklisted: 11 | 14s
+
+--- Generation 68/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 67 | Blacklisted: 11 | 2s
+
+--- Generation 69/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 68 | Blacklisted: 13 | 7s
+
+--- Generation 70/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 69 | Blacklisted: 13 | 41s
+
+--- Generation 71/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 70 | Blacklisted: 13 | 32s
+
+--- Generation 72/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 71 | Blacklisted: 13 | 32s
+
+--- Generation 73/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 72 | Blacklisted: 14 | 46s
+
+--- Generation 74/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 73 | Blacklisted: 14 | 75s
+
+--- Generation 75/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 74 | Blacklisted: 14 | 22s
+
+--- Generation 76/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 75 | Blacklisted: 14 | 47s
+
+--- Generation 77/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 76 | Blacklisted: 14 | 43s
+
+--- Generation 78/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 77 | Blacklisted: 14 | 86s
+
+--- Generation 79/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 78 | Blacklisted: 14 | 15s
+
+--- Generation 80/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 79 | Blacklisted: 15 | 33s
+
+--- Generation 81/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 80 | Blacklisted: 15 | 31s
+
+--- Generation 82/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 81 | Blacklisted: 15 | 59s
+
+--- Generation 83/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 82 | Blacklisted: 15 | 16s
+
+--- Generation 84/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 83 | Blacklisted: 16 | 7s
+
+--- Generation 85/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 84 | Blacklisted: 18 | 36s
+
+--- Generation 86/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 85 | Blacklisted: 19 | 66s
+
+--- Generation 87/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 86 | Blacklisted: 20 | 74s
+
+--- Generation 88/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 87 | Blacklisted: 22 | 70s
+
+--- Generation 89/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 88 | Blacklisted: 22 | 24s
+
+--- Generation 90/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 89 | Blacklisted: 22 | 133s
+
+--- Generation 91/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 90 | Blacklisted: 22 | 60s
+
+--- Generation 92/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 91 | Blacklisted: 22 | 96s
+
+--- Generation 93/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 92 | Blacklisted: 22 | 140s
+
+--- Generation 94/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 93 | Blacklisted: 22 | 130s
+
+--- Generation 95/100 ---
+  Best: 1.4138 | Species: 10 | Stagnation: 94 | Blacklisted: 22 | 188s
+
+--- Generation 96/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 95 | Blacklisted: 22 | 188s
+
+--- Generation 97/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 96 | Blacklisted: 23 | 348s
+
+--- Generation 98/100 ---
+  Best: 1.4138 | Species: 12 | Stagnation: 97 | Blacklisted: 23 | 80s
+
+--- Generation 99/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 98 | Blacklisted: 23 | 75s
+
+--- Generation 100/100 ---
+  Best: 1.4138 | Species: 11 | Stagnation: 99 | Blacklisted: 23 | 70s
+

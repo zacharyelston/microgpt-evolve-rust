@@ -1,0 +1,53 @@
+=== MicroGPT Loss Evolution Engine (GPU-Enhanced, Selectable) ===
+Experiment: experiments/evolve_gpu0_20260312_183145.log
+Target: loss < 1.0
+Population: 12, Generations: 100
+GPU Device: 0, Acceleration: GPU
+
+--- Generation 1/100 ---
+  Best: 1.2474 | Species: 10 | Stagnation: 0 | Blacklisted: 0 | 244s (GPU0)
+--- Generation 2/100 ---
+  Best: 1.2474 | Species: 9 | Stagnation: 1 | Blacklisted: 1 | 267s (GPU0)
+--- Generation 3/100 ---
+  Best: 1.2474 | Species: 12 | Stagnation: 2 | Blacklisted: 1 | 102s (GPU0)
+--- Generation 4/100 ---
+  Best: 1.2474 | Species: 8 | Stagnation: 3 | Blacklisted: 1 | 149s (GPU0)
+--- Generation 5/100 ---
+  Best: 1.2474 | Species: 9 | Stagnation: 4 | Blacklisted: 1 | 36s (GPU0)
+--- Generation 6/100 ---
+  Best: 1.2474 | Species: 12 | Stagnation: 5 | Blacklisted: 2 | 29s (GPU0)
+--- Generation 7/100 ---
+  Best: 1.2474 | Species: 12 | Stagnation: 6 | Blacklisted: 2 | 23s (GPU0)
+--- Generation 8/100 ---
+  Best: 1.2474 | Species: 10 | Stagnation: 7 | Blacklisted: 2 | 30s (GPU0)
+--- Generation 9/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 8 | Blacklisted: 2 | 31s (GPU0)
+--- Generation 10/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 9 | Blacklisted: 3 | 11s (GPU0)
+--- Generation 11/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 10 | Blacklisted: 3 | 22s (GPU0)
+--- Generation 12/100 ---
+  Best: 1.2474 | Species: 12 | Stagnation: 11 | Blacklisted: 3 | 44s (GPU0)
+--- Generation 13/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 12 | Blacklisted: 3 | 37s (GPU0)
+--- Generation 14/100 ---
+  Best: 1.2474 | Species: 10 | Stagnation: 13 | Blacklisted: 3 | 20s (GPU0)
+--- Generation 15/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 14 | Blacklisted: 3 | 22s (GPU0)
+--- Generation 16/100 ---
+  Best: 1.2474 | Species: 12 | Stagnation: 15 | Blacklisted: 3 | 35s (GPU0)
+--- Generation 17/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 16 | Blacklisted: 3 | 55s (GPU0)
+--- Generation 18/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 17 | Blacklisted: 4 | 81s (GPU0)
+--- Generation 19/100 ---
+  Best: 1.2474 | Species: 11 | Stagnation: 18 | Blacklisted: 4 | 34s (GPU0)
+--- Generation 20/100 ---
+  Best: 1.2474 | Species: 12 | Stagnation: 19 | Blacklisted: 4 | 69s (GPU0)
+--- Generation 21/100 ---
+  Best: 1.2474 | Species: 9 | Stagnation: 20 | Blacklisted: 4 | 22s (GPU0)
+--- Generation 22/100 ---
+  Best: 1.2474 | Species: 9 | Stagnation: 21 | Blacklisted: 5 | 54s (GPU0)
+--- Generation 23/100 ---
+  Best: 1.2474 | Species: 10 | Stagnation: 22 | Blacklisted: 6 | 35s (GPU0)
+--- Generation 24/100 ---

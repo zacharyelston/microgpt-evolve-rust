@@ -1,0 +1,8 @@
+=== MicroGPT GPU Matrix-Optimized Evolution ===
+Experiment: experiments/evolve_gpu_matrix_20260312_190113.log
+GPU Device: 0, Acceleration: GPU MATRIX
+Population: 24, Generations: 100
+Target: loss < 0.8
+Model Range: 128-384 embeddings, 64-192 context
+
+--- Generation 1/100 (GPU MATRIX) ---

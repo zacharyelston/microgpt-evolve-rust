@@ -56,6 +56,22 @@ path = "src/bin/parameter_sweep_1_4.rs"
 name = "parameter_sweep_1_10"
 path = "src/bin/parameter_sweep_1_10.rs"
 
+[[bin]]
+name = "gpu_detect"
+path = "src/bin/gpu_detect.rs"
+
+[[bin]]
+name = "evolve_large_gpu_select"
+path = "src/bin/evolve_large_gpu_select.rs"
+
+[[bin]]
+name = "evolve_gpu_max"
+path = "src/bin/evolve_gpu_max.rs"
+
+[[bin]]
+name = "evolve_gpu_matrix"
+path = "src/bin/evolve_gpu_matrix.rs"
+
 [dependencies]
 rand = "0.8"
 rayon = "1.10"
