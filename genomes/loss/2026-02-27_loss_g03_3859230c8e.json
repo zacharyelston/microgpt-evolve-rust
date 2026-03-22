@@ -1,0 +1,19 @@
+{
+  "id": "2026-02-27_loss_g03_3859230c8e",
+  "objective": "loss",
+  "created_at": "2026-02-27T16:11:38Z",
+  "author": "codex",
+  "notes": "initial registry import",
+  "source": "experiments/evolve_20260227_104042.log",
+  "generation": 3,
+  "rank": 8,
+  "n_emb": 8,
+  "n_head": 2,
+  "n_layer": 3,
+  "n_ctx": 12,
+  "n_ff_exp": 2,
+  "steps": 1500,
+  "lr": 0.001,
+  "loss": 2.1902,
+  "origin": "immigrant"
+}

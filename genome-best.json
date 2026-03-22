@@ -1,0 +1,12 @@
+{
+  "n_emb": 32,
+  "n_ctx": 32,
+  "n_layer": 1,
+  "n_head": 1,
+  "n_ff_exp": 1,
+  "steps": 600,
+  "lr": 0.0051434048299098326,
+  "loss": 1.4891693092507787,
+  "generation": 10,
+  "evolved": true
+}

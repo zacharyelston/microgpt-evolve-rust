@@ -1,0 +1,52 @@
+{
+  "parameter_ranges": {
+    "n_emb": {
+      "min": 1,
+      "max": 4,
+      "values": [1, 2, 3, 4]
+    },
+    "n_ctx": {
+      "min": 1,
+      "max": 4,
+      "values": [1, 2, 3, 4]
+    },
+    "n_layer": {
+      "min": 1,
+      "max": 4
+    },
+    "n_head": {
+      "min": 1,
+      "max": 4,
+      "values": [1, 2, 3, 4]
+    },
+    "n_ff_exp": {
+      "min": 1,
+      "max": 4
+    },
+    "lr": {
+      "min": 0.001,
+      "max": 0.1,
+      "log_scale": true
+    },
+    "steps": {
+      "min": 200,
+      "max": 1000,
+      "values": [200, 400, 600, 800, 1000]
+    }
+  },
+  "evolution_settings": {
+    "population_size": 12,
+    "generations": 20,
+    "mutation_rate": 0.3,
+    "target_loss": 1.2
+  },
+  "genesis_config": {
+    "n_emb": 1,
+    "n_ctx": 1,
+    "n_layer": 1,
+    "n_head": 1,
+    "n_ff_exp": 1,
+    "lr": 0.01,
+    "steps": 1000
+  }
+}

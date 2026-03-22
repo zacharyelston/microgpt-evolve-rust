@@ -1,0 +1,8 @@
+=== MicroGPT MAXIMUM GPU STRESS TEST ===
+Experiment: experiments/evolve_gpu_max_20260312_185917.log
+GPU Device: 0, Acceleration: GPU MAX
+Population: 32, Generations: 200
+Target: loss < 0.5
+Max Model Size: 512 embeddings, 256 context, 12 layers
+
+--- Generation 1/200 (MAX STRESS) ---

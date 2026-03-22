@@ -1,0 +1,31 @@
+{
+<<<<<<< ours
+  "n_emb": 24,
+  "n_ctx": 3,
+  "n_layer": 2,
+  "n_head": 1,
+  "n_ff_exp": 4,
+  "steps": 200,
+  "lr": 0.05,
+  "loss": 1.247445948236702,
+  "generation": 100,
+  "evolved": true
+}
+=======
+  "n_emb": 16,
+  "n_ctx": 16,
+  "n_layer": 1,
+  "n_head": 2,
+  "n_ff_exp": 2,
+  "steps": 500,
+  "lr": 0.025281642837906352,
+  "loss": 1.446008678479632,
+  "generation": 9,
+  "objective": "loss",
+  "author": "codex",
+  "notes": "winner from local genome.json",
+  "created_at": "2026-02-27T16:10:12Z",
+  "source": "genome.json",
+  "run_log": "experiments/evolve_20260227_104042.log"
+}
+>>>>>>> theirs

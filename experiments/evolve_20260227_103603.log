@@ -1,0 +1,181 @@
+=== MicroGPT Loss Evolution Engine v2 ===
+Experiment: experiments/evolve_20260227_103603.log
+Target: loss < 1.2
+Population: 8, Generations: 10
+Selection: tournament(k=3), 2 immigrants/gen
+Stagnation: championship@2, cataclysm@4
+Blacklist: loss > 2.3 after 2 samples
+
+--- Generation 1/10 ---
+> #1: Emb:8   Head:2 Lay:3 Ctx:16 FF:2 LR:0.0105 Steps:200  | Loss: 1.6640 [random]
+  #2: Emb:8   Head:1 Lay:2 Ctx:8  FF:3 LR:0.0055 Steps:500  | Loss: 1.7227 [random]
+  #3: Emb:24  Head:4 Lay:3 Ctx:12 FF:4 LR:0.0255 Steps:1000 | Loss: 1.8423 [random]
+  #4: Emb:12  Head:1 Lay:3 Ctx:8  FF:4 LR:0.0087 Steps:750  | Loss: 1.9396 [random]
+  #5: Emb:8   Head:4 Lay:2 Ctx:24 FF:4 LR:0.0023 Steps:1500 | Loss: 2.0907 [random]
+  #6: Emb:16  Head:1 Lay:3 Ctx:8  FF:1 LR:0.0158 Steps:750  | Loss: 2.1915 [random]
+  #7: Emb:24  Head:2 Lay:3 Ctx:24 FF:4 LR:0.0041 Steps:300  | Loss: 2.2158 [random]
+  #8: Emb:20  Head:2 Lay:2 Ctx:24 FF:2 LR:0.0017 Steps:300  | Loss: 2.2888 [random]
+  Best: 1.6640 | Worst: 2.2888 | Spread: 0.6248 | Species: 8 (12% largest) | Stagnation: 0 | Blacklisted: 0 | 228s
+
+--- Generation 2/10 ---
+> #1: Emb:32  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0169 Steps:200  | Loss: 1.6054 [immigrant]
+  #2: Emb:16  Head:1 Lay:4 Ctx:8  FF:3 LR:0.0040 Steps:500  | Loss: 1.6533 [mutant]
+  #3: Emb:8   Head:2 Lay:3 Ctx:16 FF:2 LR:0.0105 Steps:200  | Loss: 1.6640 [elite]
+  #4: Emb:20  Head:1 Lay:2 Ctx:16 FF:3 LR:0.0022 Steps:500  | Loss: 1.6652 [cross]
+  #5: Emb:8   Head:4 Lay:3 Ctx:8  FF:4 LR:0.0055 Steps:500  | Loss: 1.7492 [cross]
+  #6: Emb:8   Head:1 Lay:1 Ctx:8  FF:3 LR:0.0055 Steps:500  | Loss: 1.7593 [mutant]
+  #7: Emb:12  Head:1 Lay:4 Ctx:16 FF:4 LR:0.0087 Steps:200  | Loss: 1.8197 [cross]
+  #8: Emb:16  Head:2 Lay:3 Ctx:12 FF:3 LR:0.0042 Steps:200  | Loss: 1.8698 [immigrant]
+  Best: 1.6054 | Worst: 1.8698 | Spread: 0.2644 | Species: 8 (12% largest) | Stagnation: 0 | Blacklisted: 0 | 51s
+
+--- Generation 3/10 ---
+> #1: Emb:32  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0169 Steps:200  | Loss: 1.6054 [elite]
+  #2: Emb:8   Head:1 Lay:1 Ctx:24 FF:3 LR:0.0055 Steps:600  | Loss: 1.7475 [mutant]
+  #3: Emb:16  Head:1 Lay:4 Ctx:8  FF:3 LR:0.0040 Steps:500  | Loss: 1.7853 [mutant]
+  #4: Emb:8   Head:4 Lay:1 Ctx:12 FF:3 LR:0.0460 Steps:1000 | Loss: 1.7984 [immigrant]
+  #5: Emb:32  Head:2 Lay:2 Ctx:16 FF:1 LR:0.0169 Steps:700  | Loss: 1.9342 [mutant]
+  #6: Emb:8   Head:2 Lay:3 Ctx:8  FF:2 LR:0.0044 Steps:200  | Loss: 2.1560 [cross]
+  #7: Emb:24  Head:4 Lay:3 Ctx:12 FF:2 LR:0.0458 Steps:1500 | Loss: 2.1985 [immigrant]
+  #8: Emb:16  Head:1 Lay:4 Ctx:8  FF:3 LR:0.0040 Steps:250  | Loss: 2.8060 [mutant]
+  Best: 1.6054 | Worst: 2.8060 | Spread: 1.2006 | Species: 7 (25% largest) | Stagnation: 1 | Blacklisted: 0 | 215s
+
+--- Generation 4/10 ---
+> #1: Emb:32  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0169 Steps:200  | Loss: 1.6054 [elite]
+  #2: Emb:16  Head:1 Lay:4 Ctx:24 FF:1 LR:0.0055 Steps:500  | Loss: 1.6307 [cross]
+  #3: Emb:16  Head:4 Lay:4 Ctx:8  FF:1 LR:0.0040 Steps:500  | Loss: 1.6855 [mutant]
+  #4: Emb:32  Head:2 Lay:2 Ctx:8  FF:2 LR:0.0169 Steps:200  | Loss: 1.8036 [mutant]
+  #5: Emb:20  Head:4 Lay:1 Ctx:8  FF:1 LR:0.0017 Steps:500  | Loss: 1.8502 [immigrant]
+  #6: Emb:16  Head:1 Lay:1 Ctx:8  FF:3 LR:0.0055 Steps:750  | Loss: 1.9184 [cross]
+  #7: Emb:24  Head:1 Lay:1 Ctx:8  FF:4 LR:0.0040 Steps:300  | Loss: 2.3372 [immigrant]
+  #8: Emb:20  Head:1 Lay:1 Ctx:24 FF:3 LR:0.0377 Steps:100  | Loss: 2.4350 [hyper]
+  Best: 1.6054 | Worst: 2.4350 | Spread: 0.8297 | Species: 8 (12% largest) | Stagnation: 2 | Blacklisted: 0 | 38s
+
+  *** CHAMPIONSHIP: 2 gens stagnant — breeding winners with growth ***
+--- Generation 5/10 ---
+> #1: Emb:16  Head:4 Lay:4 Ctx:8  FF:1 LR:0.0044 Steps:500  | Loss: 1.6103 [champion]
+  #2: Emb:32  Head:2 Lay:4 Ctx:16 FF:2 LR:0.0035 Steps:500  | Loss: 1.6401 [champion]
+  #3: Emb:32  Head:4 Lay:2 Ctx:12 FF:2 LR:0.0089 Steps:1000 | Loss: 1.6795 [immigrant]
+  #4: Emb:32  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0169 Steps:200  | Loss: 1.9077 [re-eval]
+  #5: Emb:32  Head:2 Lay:3 Ctx:16 FF:2 LR:0.0169 Steps:200  | Loss: 2.0602 [grown]
+  #6: Emb:32  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0169 Steps:161  | Loss: 2.1490 [tuned]
+  #7: Emb:32  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0148 Steps:159  | Loss: 2.1878 [tuned]
+  #8: Emb:16  Head:1 Lay:2 Ctx:24 FF:1 LR:0.0166 Steps:102  | Loss: 2.5263 [champion]
+  Best: 1.6103 | Worst: 2.5263 | Spread: 0.9160 | Species: 6 (38% largest) | Stagnation: 0 | Blacklisted: 0 | 215s
+
+--- Generation 6/10 ---
+> #1: Emb:32  Head:2 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:500  | Loss: 1.5635 [mutant]
+  #2: Emb:16  Head:4 Lay:4 Ctx:8  FF:1 LR:0.0044 Steps:500  | Loss: 1.6103 [elite]
+  #3: Emb:16  Head:1 Lay:4 Ctx:12 FF:3 LR:0.0089 Steps:1000 | Loss: 1.7415 [cross]
+  #4: Emb:32  Head:2 Lay:2 Ctx:12 FF:2 LR:0.0089 Steps:1000 | Loss: 1.8207 [mutant]
+  #5: Emb:8   Head:1 Lay:2 Ctx:16 FF:4 LR:0.0083 Steps:1500 | Loss: 1.8721 [immigrant]
+  #6: Emb:16  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0023 Steps:200  | Loss: 1.9234 [immigrant]
+  #7: Emb:16  Head:4 Lay:4 Ctx:8  FF:1 LR:0.0044 Steps:750  | Loss: 1.9802 [mutant]
+  #8: Emb:20  Head:4 Lay:4 Ctx:8  FF:1 LR:0.0044 Steps:1500 | Loss: 2.1861 [hyper]
+  Best: 1.5635 | Worst: 2.1861 | Spread: 0.6226 | Species: 7 (25% largest) | Stagnation: 0 | Blacklisted: 0 | 217s
+
+--- Generation 7/10 ---
+> #1: Emb:32  Head:2 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:500  | Loss: 1.5635 [elite]
+  #2: Emb:16  Head:2 Lay:1 Ctx:16 FF:1 LR:0.0223 Steps:1000 | Loss: 1.7031 [immigrant]
+  #3: Emb:32  Head:2 Lay:4 Ctx:16 FF:2 LR:0.0035 Steps:500  | Loss: 1.7641 [mutant]
+  #4: Emb:16  Head:1 Lay:4 Ctx:8  FF:1 LR:0.0013 Steps:1000 | Loss: 1.9097 [cross]
+  #5: Emb:16  Head:4 Lay:3 Ctx:16 FF:4 LR:0.0014 Steps:200  | Loss: 2.1328 [immigrant]
+  #6: Emb:16  Head:4 Lay:4 Ctx:8  FF:1 LR:0.0044 Steps:400  | Loss: 2.1820 [mutant]
+  #7: Emb:16  Head:4 Lay:3 Ctx:8  FF:1 LR:0.0044 Steps:400  | Loss: 2.2916 [cross]
+  #8: Emb:32  Head:2 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:100  | Loss: 2.4623 [mutant]
+  Best: 1.5635 | Worst: 2.4623 | Spread: 0.8989 | Species: 7 (25% largest) | Stagnation: 1 | Blacklisted: 0 | 200s
+
+--- Generation 8/10 ---
+> #1: Emb:32  Head:2 Lay:2 Ctx:8  FF:1 LR:0.0035 Steps:500  | Loss: 1.5156 [hyper]
+  #2: Emb:32  Head:4 Lay:1 Ctx:8  FF:2 LR:0.0035 Steps:500  | Loss: 1.5628 [mutant]
+  #3: Emb:32  Head:2 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:500  | Loss: 1.5635 [elite]
+  #4: Emb:32  Head:2 Lay:3 Ctx:8  FF:2 LR:0.0016 Steps:600  | Loss: 1.6343 [hyper]
+  #5: Emb:12  Head:2 Lay:3 Ctx:16 FF:2 LR:0.0092 Steps:750  | Loss: 1.9605 [immigrant]
+  #6: Emb:16  Head:4 Lay:3 Ctx:24 FF:3 LR:0.0122 Steps:750  | Loss: 1.9870 [immigrant]
+  #7: Emb:32  Head:2 Lay:4 Ctx:16 FF:2 LR:0.0035 Steps:750  | Loss: 2.0534 [mutant]
+  #8: Emb:8   Head:2 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:100  | Loss: 2.8601 [mutant]
+  Best: 1.5156 | Worst: 2.8601 | Spread: 1.3444 | Species: 8 (12% largest) | Stagnation: 0 | Blacklisted: 0 | 318s
+
+--- Generation 9/10 ---
+> #1: Emb:32  Head:2 Lay:2 Ctx:8  FF:1 LR:0.0035 Steps:500  | Loss: 1.5156 [elite]
+  #2: Emb:32  Head:4 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:500  | Loss: 1.5693 [cross]
+  #3: Emb:32  Head:2 Lay:4 Ctx:8  FF:3 LR:0.0035 Steps:500  | Loss: 1.6457 [cross]
+  #4: Emb:12  Head:1 Lay:3 Ctx:12 FF:1 LR:0.0026 Steps:500  | Loss: 1.7858 [immigrant]
+  #5: Emb:32  Head:4 Lay:3 Ctx:8  FF:2 LR:0.0016 Steps:700  | Loss: 1.9002 [mutant]
+  #6: Emb:8   Head:2 Lay:2 Ctx:8  FF:1 LR:0.0035 Steps:500  | Loss: 1.9603 [cross]
+  #7: Emb:8   Head:4 Lay:4 Ctx:8  FF:1 LR:0.0035 Steps:500  | Loss: 2.0048 [cross]
+  #8: Emb:20  Head:4 Lay:2 Ctx:24 FF:4 LR:0.0112 Steps:300  | Loss: 2.2325 [immigrant]
+  Best: 1.5156 | Worst: 2.2325 | Spread: 0.7169 | Species: 8 (12% largest) | Stagnation: 1 | Blacklisted: 0 | 279s
+
+--- Generation 10/10 ---
+> #1: Emb:32  Head:2 Lay:2 Ctx:8  FF:1 LR:0.0035 Steps:500  | Loss: 1.5156 [elite]
+  #2: Emb:32  Head:4 Lay:3 Ctx:8  FF:1 LR:0.0035 Steps:500  | Loss: 1.5914 [cross]
+  #3: Emb:32  Head:4 Lay:4 Ctx:12 FF:2 LR:0.0035 Steps:500  | Loss: 1.5988 [mutant]
+  #4: Emb:24  Head:2 Lay:2 Ctx:12 FF:1 LR:0.0026 Steps:500  | Loss: 1.6484 [cross]
+  #5: Emb:20  Head:1 Lay:3 Ctx:8  FF:3 LR:0.0043 Steps:500  | Loss: 1.6652 [cross]
+  #6: Emb:16  Head:4 Lay:2 Ctx:24 FF:2 LR:0.0015 Steps:1000 | Loss: 1.8560 [immigrant]
+  #7: Emb:8   Head:2 Lay:3 Ctx:8  FF:3 LR:0.0035 Steps:500  | Loss: 1.8867 [cross]
+  #8: Emb:24  Head:1 Lay:1 Ctx:24 FF:2 LR:0.0395 Steps:1000 | Loss: 2.1397 [immigrant]
+  Best: 1.5156 | Worst: 2.1397 | Spread: 0.6241 | Species: 8 (12% largest) | Stagnation: 2 | Blacklisted: 0 | 242s
+
+========================================
+       EVOLUTION COMPLETE
+========================================
+  Generations: 10
+  Total evaluations: 80
+  Total time: 2002s (200s/gen avg)
+  Best loss: 1.5156
+  Best config: Emb:32  Head:2 Lay:2 Ctx:8  FF:1 LR:0.0035 Steps:500 
+  Blacklisted species: 0
+  Target 1.2 NOT reached
+
+--- Evolution Trajectory ---
+   Gen      Best    Species
+     1    1.6640       100%  ############################
+     2    1.6054       100%  ############################
+     3    1.6054        88%  ############################
+     4    1.6054       100%  ############################
+     5    1.6103        75%  ############################
+     6    1.5635        88%  #############################
+     7    1.5635        88%  #############################
+     8    1.5156       100%  #############################
+     9    1.5156       100%  #############################
+    10    1.5156       100%  #############################
+
+--- Top Configs Across All Generations ---
+   1. Gen 8 | Loss 1.5156 | Emb:32  Head:2 Lay:2 Ctx:8  FF:1 LR:0.0035 Steps:500  [hyper]
+   2. Gen 8 | Loss 1.5628 | Emb:32  Head:4 Lay:1 Ctx:8  FF:2 LR:0.0035 Steps:500  [mutant]
+   3. Gen 6 | Loss 1.5635 | Emb:32  Head:2 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:500  [mutant]
+   4. Gen 9 | Loss 1.5693 | Emb:32  Head:4 Lay:4 Ctx:8  FF:2 LR:0.0035 Steps:500  [cross]
+   5. Gen 10 | Loss 1.5914 | Emb:32  Head:4 Lay:3 Ctx:8  FF:1 LR:0.0035 Steps:500  [cross]
+   6. Gen 10 | Loss 1.5988 | Emb:32  Head:4 Lay:4 Ctx:12 FF:2 LR:0.0035 Steps:500  [mutant]
+   7. Gen 2 | Loss 1.6054 | Emb:32  Head:2 Lay:2 Ctx:16 FF:2 LR:0.0169 Steps:200  [immigrant]
+   8. Gen 5 | Loss 1.6103 | Emb:16  Head:4 Lay:4 Ctx:8  FF:1 LR:0.0044 Steps:500  [champion]
+   9. Gen 4 | Loss 1.6307 | Emb:16  Head:1 Lay:4 Ctx:24 FF:1 LR:0.0055 Steps:500  [cross]
+  10. Gen 8 | Loss 1.6343 | Emb:32  Head:2 Lay:3 Ctx:8  FF:2 LR:0.0016 Steps:600  [hyper]
+
+--- Hyperparameter Analysis ---
+  Param            Top 10  Bottom 10      Delta
+  Embedding          32.0       19.6     +12.4 ^
+  Heads               2.8        2.0      +0.8 ^
+  Layers              3.0        2.6      +0.4 ^
+  Context             8.4       16.0      -7.6 v
+  FF Mult             1.6        2.6      -1.0 v
+  Learn Rate       0.0035     0.0091   -0.0056  
+  Steps             500.0      225.2    +274.8 ^
+
+--- Insights ---
+  - Depth matters: top configs avg 3.0 layers vs 2.6 in bottom
+  - Embedding size: larger is better (top avg 32 vs bottom 20)
+  - Training duration: more steps preferred (top avg 500 vs bottom 225)
+  - Learning rate: lower is better (top avg 0.0035 vs bottom 0.0091)
+  - Context window: shorter preferred (top avg 8 vs bottom 16)
+
+--- Genome Written ---
+  Saved to genome.json (generation 8)
+  The organism has evolved.
+  Run `cargo run --release` to see the new creature.
+
+--- Final Demo with Best Config ---
+Final loss: 1.5636
+
+Experiment saved to: experiments/evolve_20260227_103603.log
