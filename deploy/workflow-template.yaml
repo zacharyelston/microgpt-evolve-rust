@@ -169,7 +169,7 @@ spec:
           - name: best-genome-json
             valueFrom:
               path: /tmp/genome-best.json
-              default: "{}"
+              default: "{\"loss\":99.0}"
       retryStrategy:
         limit: "1"
         retryPolicy: OnError
@@ -239,11 +239,40 @@ spec:
             echo '{{inputs.parameters.genome-b02}}' > /tmp/island-1.json
             echo '{{inputs.parameters.genome-b03}}' > /tmp/island-2.json
             echo '{{inputs.parameters.genome-b05}}' > /tmp/island-3.json
-            python3 /app/scripts/workflow_merge_islands.py \
-              --losses "{{inputs.parameters.losses}}" \
-              --genomes "/tmp/island-0.json,/tmp/island-1.json,/tmp/island-2.json,/tmp/island-3.json" \
-              --nodes "{{inputs.parameters.nodes}}" \
-              --output-dir /tmp
+            SCRIPT=/app/scripts/workflow_merge_islands.py
+            if [ -f "$SCRIPT" ]; then
+              python3 "$SCRIPT" \
+                --losses "{{inputs.parameters.losses}}" \
+                --genomes "/tmp/island-0.json,/tmp/island-1.json,/tmp/island-2.json,/tmp/island-3.json" \
+                --nodes "{{inputs.parameters.nodes}}" \
+                --output-dir /tmp
+            else
+              python3 - <<'PYEOF'
+            import json
+            losses = [s.strip() for s in "{{inputs.parameters.losses}}".split(",")]
+            nodes  = [s.strip() for s in "{{inputs.parameters.nodes}}".split(",")]
+            files  = ["/tmp/island-0.json","/tmp/island-1.json","/tmp/island-2.json","/tmp/island-3.json"]
+            best_loss, best_node, best_genome = float("inf"), "none", {}
+            lines = []
+            for i,(ls,nd,gf) in enumerate(zip(losses,nodes,files)):
+                try: loss = float(ls)
+                except: loss = float("inf")
+                try: genome = json.loads(open(gf).read())
+                except: genome = {}
+                marker = ""
+                if loss < best_loss and genome:
+                    best_loss, best_node, best_genome = loss, nd, genome
+                    marker = " <-- WINNER"
+                lines.append(f"  [{i}] {nd}: loss={loss:.6f}{marker}")
+                print(f"[merge] island {i} {nd}: loss={loss:.6f}")
+            summary = "=== Island Merge ===\n" + "\n".join(lines) + f"\nBest: {best_loss:.6f} on {best_node}"
+            print(summary)
+            open("/tmp/best-loss.txt","w").write(str(best_loss)+"\n")
+            open("/tmp/best-node.txt","w").write(best_node+"\n")
+            open("/tmp/island-summary.txt","w").write(summary+"\n")
+            open("/tmp/best-genome.json","w").write(json.dumps(best_genome,indent=2)+"\n")
+            PYEOF
+            fi
 
     # ─── register-genome: update next-run genesis from winning genome ─────────
     - name: register-genome
@@ -270,6 +299,21 @@ spec:
         args:
           - |
             echo '{{inputs.parameters.best-genome-json}}' > /tmp/genome-best.json
+            LOSS=$(python3 -c "import json,sys; d=json.load(open('/tmp/genome-best.json')); print(d.get('loss',99.0))" 2>/dev/null || echo "99.0")
+            echo "[register] genome loss check: $LOSS"
+            python3 -c "
+            import sys
+            try:
+                loss = float('$LOSS')
+            except:
+                loss = 99.0
+            if loss >= 90.0:
+                print('[register] Fallback genome — skipping registration, writing safe outputs')
+                open('/tmp/genome-loss.txt','w').write(str(loss)+'\n')
+                open('/tmp/genome-config.txt','w').write('fallback — no valid genome\n')
+                sys.exit(0)
+            sys.exit(1)
+            " && exit 0
             python3 /app/scripts/workflow_register_genome.py \
               --genome /tmp/genome-best.json \
               --config /app/evolution_config.json \

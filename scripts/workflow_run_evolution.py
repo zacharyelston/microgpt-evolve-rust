@@ -54,13 +54,19 @@ def run(args: argparse.Namespace) -> None:
     Path("/tmp/best-loss.txt").write_text(best_loss + "\n")
     print(f"[run] Best loss: {best_loss}")
 
+    genome_written = False
     for genome_name in ["genome-best.json", "genome.json", "genome_fitness_best.json"]:
         src = Path("/app") / genome_name
         if src.exists():
             shutil.copy(src, output_dir / genome_name)
             print(f"[run] Copied {genome_name} to {output_dir}")
-            if genome_name == "genome-best.json":
+            if not genome_written:
                 Path("/tmp/genome-best.json").write_text(src.read_text())
+                genome_written = True
+                print(f"[run] genome-best.json written to /tmp")
+    if not genome_written:
+        Path("/tmp/genome-best.json").write_text('{"loss":99.0}\n')
+        print("[run] No genome file found — wrote fallback")
 
     if result.returncode != 0:
         print(f"[run] Binary exited with code {result.returncode}", file=sys.stderr)
