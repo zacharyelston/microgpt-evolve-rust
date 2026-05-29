@@ -5,15 +5,7 @@ metadata:
   namespace: apollo-cv
 spec:
   serviceAccountName: apollo-cv-workflow
-  entrypoint: evolution-pipeline
-  volumeClaimTemplates:
-    - metadata:
-        name: results
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 1Gi
+  entrypoint: island-evolution-pipeline
   arguments:
     parameters:
       - name: generations
@@ -26,7 +18,9 @@ spec:
         value: "ghcr.io/zacharyelston/microgpt-evolve-rust:latest"
 
   templates:
-    - name: evolution-pipeline
+
+    # ─── top-level pipeline ───────────────────────────────────────────────────
+    - name: island-evolution-pipeline
       inputs:
         parameters:
           - name: generations
@@ -41,34 +35,89 @@ spec:
           - name: best-genome-config
             valueFrom:
               parameter: "{{steps.register.outputs.parameters.genome-config}}"
-          - name: summary
+          - name: island-summary
             valueFrom:
-              parameter: "{{steps.analyze.outputs.parameters.summary}}"
+              parameter: "{{steps.merge.outputs.parameters.island-summary}}"
       steps:
-        - - name: detect-gpu
-            template: detect-gpu
+        # Step 1 — all 4 islands run in parallel, each pinned to its own node
+        - - name: island-hh-b01
+            template: island
             arguments:
               parameters:
                 - name: image
                   value: "{{inputs.parameters.image}}"
-
-        - - name: evolve
-            template: run-evolution
-            arguments:
-              parameters:
                 - name: generations
                   value: "{{inputs.parameters.generations}}"
                 - name: population-size
                   value: "{{inputs.parameters.population-size}}"
                 - name: target-loss
                   value: "{{inputs.parameters.target-loss}}"
+                - name: node
+                  value: "hh-b01.hydra.anceralabs.com"
+          - name: island-hh-b02
+            template: island
+            arguments:
+              parameters:
                 - name: image
                   value: "{{inputs.parameters.image}}"
-                - name: gpu-name
-                  value: "{{steps.detect-gpu.outputs.parameters.gpu-name}}"
-                - name: node-name
-                  value: "{{steps.detect-gpu.outputs.parameters.node-name}}"
+                - name: generations
+                  value: "{{inputs.parameters.generations}}"
+                - name: population-size
+                  value: "{{inputs.parameters.population-size}}"
+                - name: target-loss
+                  value: "{{inputs.parameters.target-loss}}"
+                - name: node
+                  value: "hh-b02.hydra.anceralabs.com"
+          - name: island-hh-b03
+            template: island
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+                - name: generations
+                  value: "{{inputs.parameters.generations}}"
+                - name: population-size
+                  value: "{{inputs.parameters.population-size}}"
+                - name: target-loss
+                  value: "{{inputs.parameters.target-loss}}"
+                - name: node
+                  value: "hh-b03.hydra.anceralabs.com"
+          - name: island-hh-b05
+            template: island
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+                - name: generations
+                  value: "{{inputs.parameters.generations}}"
+                - name: population-size
+                  value: "{{inputs.parameters.population-size}}"
+                - name: target-loss
+                  value: "{{inputs.parameters.target-loss}}"
+                - name: node
+                  value: "hh-b05.hydra.anceralabs.com"
 
+        # Step 2 — merge: pick the winning island (lowest loss)
+        - - name: merge
+            template: merge-islands
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+                - name: losses
+                  value: "{{steps.island-hh-b01.outputs.parameters.best-loss}},{{steps.island-hh-b02.outputs.parameters.best-loss}},{{steps.island-hh-b03.outputs.parameters.best-loss}},{{steps.island-hh-b05.outputs.parameters.best-loss}}"
+                - name: nodes
+                  value: "hh-b01.hydra.anceralabs.com,hh-b02.hydra.anceralabs.com,hh-b03.hydra.anceralabs.com,hh-b05.hydra.anceralabs.com"
+                - name: genome-b01
+                  value: "{{steps.island-hh-b01.outputs.parameters.best-genome-json}}"
+                - name: genome-b02
+                  value: "{{steps.island-hh-b02.outputs.parameters.best-genome-json}}"
+                - name: genome-b03
+                  value: "{{steps.island-hh-b03.outputs.parameters.best-genome-json}}"
+                - name: genome-b05
+                  value: "{{steps.island-hh-b05.outputs.parameters.best-genome-json}}"
+
+        # Step 3 — register: update genesis config for next cron cycle
         - - name: register
             template: register-genome
             arguments:
@@ -77,11 +126,14 @@ spec:
                   value: "{{inputs.parameters.image}}"
                 - name: run-id
                   value: "{{workflow.name}}"
-                - name: evolved-loss
-                  value: "{{steps.evolve.outputs.parameters.best-loss}}"
-                - name: node-name
-                  value: "{{steps.detect-gpu.outputs.parameters.node-name}}"
+                - name: best-genome-json
+                  value: "{{steps.merge.outputs.parameters.best-genome-json}}"
+                - name: best-loss
+                  value: "{{steps.merge.outputs.parameters.best-loss}}"
+                - name: best-node
+                  value: "{{steps.merge.outputs.parameters.best-node}}"
 
+        # Step 4 — analyze: human-readable summary
         - - name: analyze
             template: analyze-results
             arguments:
@@ -90,73 +142,41 @@ spec:
                   value: "{{inputs.parameters.image}}"
                 - name: generations
                   value: "{{inputs.parameters.generations}}"
-                - name: population-size
-                  value: "{{inputs.parameters.population-size}}"
                 - name: best-loss
-                  value: "{{steps.evolve.outputs.parameters.best-loss}}"
+                  value: "{{steps.merge.outputs.parameters.best-loss}}"
+                - name: best-node
+                  value: "{{steps.merge.outputs.parameters.best-node}}"
+                - name: island-summary
+                  value: "{{steps.merge.outputs.parameters.island-summary}}"
                 - name: best-genome-config
                   value: "{{steps.register.outputs.parameters.genome-config}}"
 
-    # ─── detect-gpu ──────────────────────────────────────────────────────────
-    - name: detect-gpu
+    # ─── island: one GPU evolution run pinned to a specific node ─────────────
+    - name: island
       inputs:
         parameters:
           - name: image
-      outputs:
-        parameters:
-          - name: gpu-name
-            valueFrom:
-              path: /tmp/gpu-name.txt
-              default: "unknown"
-          - name: node-name
-            valueFrom:
-              path: /tmp/node-name.txt
-              default: "unknown"
-      podSpecPatch: |
-        runtimeClassName: nvidia
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    workflows.argoproj.io/workflow: "{{workflow.name}}"
-                topologyKey: kubernetes.io/hostname
-      container:
-        image: "{{inputs.parameters.image}}"
-        command: [sh, -c]
-        args:
-          - /app/gpu_detect 2>&1 | tee /tmp/gpu-detect.txt; grep -oP 'GPU.*:\s*\K.+' /tmp/gpu-detect.txt | head -1 > /tmp/gpu-name.txt || echo "GPU detected" > /tmp/gpu-name.txt; echo "${NODE_NAME:-unknown}" > /tmp/node-name.txt
-        env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-        resources:
-          requests:
-            nvidia.com/gpu: "1"
-          limits:
-            nvidia.com/gpu: "1"
-
-    # ─── run-evolution ────────────────────────────────────────────────────────
-    - name: run-evolution
-      inputs:
-        parameters:
           - name: generations
           - name: population-size
           - name: target-loss
-          - name: image
-          - name: gpu-name
-          - name: node-name
+          - name: node
       outputs:
         parameters:
           - name: best-loss
             valueFrom:
               path: /tmp/best-loss.txt
-              default: "N/A"
+              default: "99.0"
+          - name: best-genome-json
+            valueFrom:
+              path: /tmp/genome-best.json
+              default: "{}"
+      retryStrategy:
+        limit: "1"
+        retryPolicy: OnError
       podSpecPatch: |
         runtimeClassName: nvidia
+      nodeSelector:
+        kubernetes.io/hostname: "{{inputs.parameters.node}}"
       container:
         image: "{{inputs.parameters.image}}"
         command: [python3]
@@ -169,24 +189,71 @@ spec:
           - --target-loss
           - "{{inputs.parameters.target-loss}}"
           - --output-dir
-          - /results
+          - /tmp
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         resources:
           requests:
             nvidia.com/gpu: "1"
           limits:
             nvidia.com/gpu: "1"
-        volumeMounts:
-          - name: results
-            mountPath: /results
 
-    # ─── register-genome ──────────────────────────────────────────────────────
+    # ─── merge-islands: pick winning genome across all islands ────────────────
+    - name: merge-islands
+      inputs:
+        parameters:
+          - name: image
+          - name: losses
+          - name: nodes
+          - name: genome-b01
+          - name: genome-b02
+          - name: genome-b03
+          - name: genome-b05
+      outputs:
+        parameters:
+          - name: best-loss
+            valueFrom:
+              path: /tmp/best-loss.txt
+              default: "N/A"
+          - name: best-node
+            valueFrom:
+              path: /tmp/best-node.txt
+              default: "unknown"
+          - name: island-summary
+            valueFrom:
+              path: /tmp/island-summary.txt
+              default: "No results"
+          - name: best-genome-json
+            valueFrom:
+              path: /tmp/best-genome.json
+              default: "{}"
+      container:
+        image: "{{inputs.parameters.image}}"
+        command: [sh, -c]
+        args:
+          - |
+            echo '{{inputs.parameters.genome-b01}}' > /tmp/island-0.json
+            echo '{{inputs.parameters.genome-b02}}' > /tmp/island-1.json
+            echo '{{inputs.parameters.genome-b03}}' > /tmp/island-2.json
+            echo '{{inputs.parameters.genome-b05}}' > /tmp/island-3.json
+            python3 /app/scripts/workflow_merge_islands.py \
+              --losses "{{inputs.parameters.losses}}" \
+              --genomes "/tmp/island-0.json,/tmp/island-1.json,/tmp/island-2.json,/tmp/island-3.json" \
+              --nodes "{{inputs.parameters.nodes}}" \
+              --output-dir /tmp
+
+    # ─── register-genome: update next-run genesis from winning genome ─────────
     - name: register-genome
       inputs:
         parameters:
           - name: image
           - name: run-id
-          - name: evolved-loss
-          - name: node-name
+          - name: best-genome-json
+          - name: best-loss
+          - name: best-node
       outputs:
         parameters:
           - name: genome-loss
@@ -197,38 +264,30 @@ spec:
             valueFrom:
               path: /tmp/genome-config.txt
               default: "unknown"
-          - name: next-genesis
-            valueFrom:
-              path: /tmp/next-genesis.json
-              default: "{}"
       container:
         image: "{{inputs.parameters.image}}"
-        command: [python3]
+        command: [sh, -c]
         args:
-          - /app/scripts/workflow_register_genome.py
-          - --genome
-          - /results/genome-best.json
-          - --config
-          - /app/evolution_config.json
-          - --run-id
-          - "{{inputs.parameters.run-id}}"
-          - --output-dir
-          - /tmp
+          - |
+            echo '{{inputs.parameters.best-genome-json}}' > /tmp/genome-best.json
+            python3 /app/scripts/workflow_register_genome.py \
+              --genome /tmp/genome-best.json \
+              --config /app/evolution_config.json \
+              --run-id "{{inputs.parameters.run-id}}" \
+              --output-dir /tmp
         env:
           - name: EVOLVE_NODE_NAME
-            value: "{{inputs.parameters.node-name}}"
-        volumeMounts:
-          - name: results
-            mountPath: /results
+            value: "{{inputs.parameters.best-node}}"
 
-    # ─── analyze-results ──────────────────────────────────────────────────────
+    # ─── analyze-results: human-readable summary ──────────────────────────────
     - name: analyze-results
       inputs:
         parameters:
           - name: image
           - name: generations
-          - name: population-size
           - name: best-loss
+          - name: best-node
+          - name: island-summary
           - name: best-genome-config
       outputs:
         parameters:
@@ -236,19 +295,15 @@ spec:
             valueFrom:
               path: /tmp/summary.txt
               default: "No results"
-          - name: best-loss
-            valueFrom:
-              path: /tmp/best-loss.txt
-              default: "N/A"
       container:
         image: "{{inputs.parameters.image}}"
-        command: [python3]
+        command: [sh, -c]
         args:
-          - /app/scripts/workflow_analyze.py
-          - --log
-          - /results/evolve.log
-          - --output-dir
-          - /tmp
-        volumeMounts:
-          - name: results
-            mountPath: /results
+          - |
+            printf "=== MicroGPT Island Evolution ===\n" > /tmp/summary.txt
+            printf "Generations per island: {{inputs.parameters.generations}}\n" >> /tmp/summary.txt
+            printf "Best loss:              {{inputs.parameters.best-loss}}\n" >> /tmp/summary.txt
+            printf "Best node:              {{inputs.parameters.best-node}}\n" >> /tmp/summary.txt
+            printf "Best genome:            {{inputs.parameters.best-genome-config}}\n" >> /tmp/summary.txt
+            printf "\n{{inputs.parameters.island-summary}}\n" >> /tmp/summary.txt
+            cat /tmp/summary.txt

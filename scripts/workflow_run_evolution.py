@@ -59,6 +59,8 @@ def run(args: argparse.Namespace) -> None:
         if src.exists():
             shutil.copy(src, output_dir / genome_name)
             print(f"[run] Copied {genome_name} to {output_dir}")
+            if genome_name == "genome-best.json":
+                Path("/tmp/genome-best.json").write_text(src.read_text())
 
     if result.returncode != 0:
         print(f"[run] Binary exited with code {result.returncode}", file=sys.stderr)
