@@ -66,6 +66,8 @@ spec:
                   value: "{{inputs.parameters.image}}"
                 - name: gpu-name
                   value: "{{steps.detect-gpu.outputs.parameters.gpu-name}}"
+                - name: node-name
+                  value: "{{steps.detect-gpu.outputs.parameters.node-name}}"
 
         - - name: register
             template: register-genome
@@ -77,6 +79,8 @@ spec:
                   value: "{{workflow.name}}"
                 - name: evolved-loss
                   value: "{{steps.evolve.outputs.parameters.best-loss}}"
+                - name: node-name
+                  value: "{{steps.detect-gpu.outputs.parameters.node-name}}"
 
         - - name: analyze
             template: analyze-results
@@ -104,15 +108,31 @@ spec:
             valueFrom:
               path: /tmp/gpu-name.txt
               default: "unknown"
-      nodeSelector:
-        gpu: "true"
+          - name: node-name
+            valueFrom:
+              path: /tmp/node-name.txt
+              default: "unknown"
       podSpecPatch: |
         runtimeClassName: nvidia
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    workflows.argoproj.io/workflow: "{{workflow.name}}"
+                topologyKey: kubernetes.io/hostname
       container:
         image: "{{inputs.parameters.image}}"
         command: [sh, -c]
         args:
-          - /app/gpu_detect 2>&1 | tee /tmp/gpu-detect.txt; grep -oP 'GPU.*:\s*\K.+' /tmp/gpu-detect.txt | head -1 > /tmp/gpu-name.txt || echo "GPU detected" > /tmp/gpu-name.txt
+          - /app/gpu_detect 2>&1 | tee /tmp/gpu-detect.txt; grep -oP 'GPU.*:\s*\K.+' /tmp/gpu-detect.txt | head -1 > /tmp/gpu-name.txt || echo "GPU detected" > /tmp/gpu-name.txt; echo "${NODE_NAME:-unknown}" > /tmp/node-name.txt
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         resources:
           requests:
             nvidia.com/gpu: "1"
@@ -128,14 +148,13 @@ spec:
           - name: target-loss
           - name: image
           - name: gpu-name
+          - name: node-name
       outputs:
         parameters:
           - name: best-loss
             valueFrom:
               path: /tmp/best-loss.txt
               default: "N/A"
-      nodeSelector:
-        gpu: "true"
       podSpecPatch: |
         runtimeClassName: nvidia
       container:
@@ -167,6 +186,7 @@ spec:
           - name: image
           - name: run-id
           - name: evolved-loss
+          - name: node-name
       outputs:
         parameters:
           - name: genome-loss
@@ -192,6 +212,8 @@ spec:
           - /app/evolution_config.json
           - --run-id
           - "{{inputs.parameters.run-id}}"
+          - --node-name
+          - "{{inputs.parameters.node-name}}"
           - --output-dir
           - /tmp
         volumeMounts:

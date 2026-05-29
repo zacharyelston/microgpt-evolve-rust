@@ -13,7 +13,6 @@ Usage:
 """
 import argparse
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,11 +65,13 @@ def register(args: argparse.Namespace) -> None:
     registry_entry = {
         "id": f"{args.run_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
         "run_id": args.run_id,
+        "node": args.node_name,
         "loss": loss,
         "generation": generation,
         "genome": genome,
         "registered_at": datetime.now(timezone.utc).isoformat(),
     }
+    print(f"[register] Node: {args.node_name}")
     (out / "registry-entry.json").write_text(json.dumps(registry_entry, indent=2) + "\n")
 
     (out / "genome-loss.txt").write_text(str(loss) + "\n")
@@ -86,5 +87,6 @@ if __name__ == "__main__":
     parser.add_argument("--genome", default="/results/genome-best.json")
     parser.add_argument("--config", default="/app/evolution_config.json")
     parser.add_argument("--run-id", default="unknown")
+    parser.add_argument("--node-name", default="unknown")
     parser.add_argument("--output-dir", default="/tmp")
     register(parser.parse_args())

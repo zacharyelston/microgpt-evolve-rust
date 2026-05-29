@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: microgpt-evolve-cron
+  namespace: apollo-cv
+spec:
+  schedule: "0 */4 * * *"
+  timezone: "America/New_York"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 5
+  workflowSpec:
+    workflowTemplateRef:
+      name: microgpt-evolve
+    arguments:
+      parameters:
+        - name: generations
+          value: "20"
+        - name: population-size
+          value: "12"
+        - name: target-loss
+          value: "1.2"
+        - name: image
+          value: "ghcr.io/zacharyelston/microgpt-evolve-rust:latest"
