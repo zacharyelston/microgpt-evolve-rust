@@ -1,0 +1,143 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: microgpt-evolve
+  namespace: apollo-cv
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: evolution-pipeline
+  volumeClaimTemplates:
+    - metadata:
+        name: results
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+  arguments:
+    parameters:
+      - name: generations
+        value: "20"
+      - name: population-size
+        value: "12"
+      - name: target-loss
+        value: "1.2"
+      - name: image
+        value: "ghcr.io/zacharyelston/microgpt-evolve-rust:latest"
+
+  templates:
+    - name: evolution-pipeline
+      inputs:
+        parameters:
+          - name: generations
+          - name: population-size
+          - name: target-loss
+          - name: image
+      steps:
+        - - name: detect-gpu
+            template: detect-gpu
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+        - - name: evolve
+            template: run-evolution
+            arguments:
+              parameters:
+                - name: generations
+                  value: "{{inputs.parameters.generations}}"
+                - name: population-size
+                  value: "{{inputs.parameters.population-size}}"
+                - name: target-loss
+                  value: "{{inputs.parameters.target-loss}}"
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+        - - name: analyze
+            template: analyze-results
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+
+    - name: detect-gpu
+      inputs:
+        parameters:
+          - name: image
+      nodeSelector:
+        gpu: "true"
+      podSpecPatch: |
+        runtimeClassName: nvidia
+      container:
+        image: "{{inputs.parameters.image}}"
+        command: [/app/gpu_detect]
+        resources:
+          requests:
+            nvidia.com/gpu: "1"
+          limits:
+            nvidia.com/gpu: "1"
+
+    - name: run-evolution
+      inputs:
+        parameters:
+          - name: generations
+          - name: population-size
+          - name: target-loss
+          - name: image
+      outputs:
+        parameters:
+          - name: best-loss
+            valueFrom:
+              path: /tmp/best-loss.txt
+              default: "N/A"
+      nodeSelector:
+        gpu: "true"
+      podSpecPatch: |
+        runtimeClassName: nvidia
+      container:
+        image: "{{inputs.parameters.image}}"
+        command: [python3]
+        args:
+          - /app/scripts/workflow_run_evolution.py
+          - --generations
+          - "{{inputs.parameters.generations}}"
+          - --population-size
+          - "{{inputs.parameters.population-size}}"
+          - --target-loss
+          - "{{inputs.parameters.target-loss}}"
+          - --output-dir
+          - /results
+        resources:
+          requests:
+            nvidia.com/gpu: "1"
+          limits:
+            nvidia.com/gpu: "1"
+        volumeMounts:
+          - name: results
+            mountPath: /results
+
+    - name: analyze-results
+      inputs:
+        parameters:
+          - name: image
+      outputs:
+        parameters:
+          - name: summary
+            valueFrom:
+              path: /tmp/summary.txt
+              default: "No results"
+          - name: best-loss
+            valueFrom:
+              path: /tmp/best-loss.txt
+              default: "N/A"
+      container:
+        image: "{{inputs.parameters.image}}"
+        command: [python3]
+        args:
+          - /app/scripts/workflow_analyze.py
+          - --log
+          - /results/evolve.log
+          - --output-dir
+          - /tmp
+        volumeMounts:
+          - name: results
+            mountPath: /results

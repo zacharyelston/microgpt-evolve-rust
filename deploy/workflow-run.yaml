@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: microgpt-evolve-
+  namespace: apollo-cv
+spec:
+  workflowTemplateRef:
+    name: microgpt-evolve
+  arguments:
+    parameters:
+      - name: generations
+        value: "20"
+      - name: population-size
+        value: "12"
+      - name: target-loss
+        value: "1.2"
+      - name: image
+        value: "ghcr.io/zacharyelston/microgpt-evolve-rust:latest"
