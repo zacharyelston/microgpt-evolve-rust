@@ -9,10 +9,10 @@ spec:
   arguments:
     parameters:
       - name: generations
-        value: "20"
+        value: "50"
       - name: population-size
-        value: "12"
+        value: "32"
       - name: target-loss
-        value: "1.2"
+        value: "1.1"
       - name: image
-        value: "ghcr.io/zacharyelston/microgpt-evolve-rust:latest"
+        value: "ghcr.io/zacharyelston/microgpt-evolve-rust:feature-larger-runs"
