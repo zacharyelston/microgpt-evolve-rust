@@ -4,7 +4,7 @@ metadata:
   name: microgpt-evolve
   namespace: apollo-cv
 spec:
-  serviceAccountName: argo-workflow
+  serviceAccountName: apollo-cv-workflow
   entrypoint: evolution-pipeline
   volumeClaimTemplates:
     - metadata:
@@ -33,6 +33,17 @@ spec:
           - name: population-size
           - name: target-loss
           - name: image
+      outputs:
+        parameters:
+          - name: best-loss
+            valueFrom:
+              parameter: "{{steps.register.outputs.parameters.genome-loss}}"
+          - name: best-genome-config
+            valueFrom:
+              parameter: "{{steps.register.outputs.parameters.genome-config}}"
+          - name: summary
+            valueFrom:
+              parameter: "{{steps.analyze.outputs.parameters.summary}}"
       steps:
         - - name: detect-gpu
             template: detect-gpu
@@ -40,6 +51,7 @@ spec:
               parameters:
                 - name: image
                   value: "{{inputs.parameters.image}}"
+
         - - name: evolve
             template: run-evolution
             arguments:
@@ -52,30 +64,62 @@ spec:
                   value: "{{inputs.parameters.target-loss}}"
                 - name: image
                   value: "{{inputs.parameters.image}}"
+                - name: gpu-name
+                  value: "{{steps.detect-gpu.outputs.parameters.gpu-name}}"
+
+        - - name: register
+            template: register-genome
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+                - name: run-id
+                  value: "{{workflow.name}}"
+                - name: evolved-loss
+                  value: "{{steps.evolve.outputs.parameters.best-loss}}"
+
         - - name: analyze
             template: analyze-results
             arguments:
               parameters:
                 - name: image
                   value: "{{inputs.parameters.image}}"
+                - name: generations
+                  value: "{{inputs.parameters.generations}}"
+                - name: population-size
+                  value: "{{inputs.parameters.population-size}}"
+                - name: best-loss
+                  value: "{{steps.evolve.outputs.parameters.best-loss}}"
+                - name: best-genome-config
+                  value: "{{steps.register.outputs.parameters.genome-config}}"
 
+    # ─── detect-gpu ──────────────────────────────────────────────────────────
     - name: detect-gpu
       inputs:
         parameters:
           - name: image
+      outputs:
+        parameters:
+          - name: gpu-name
+            valueFrom:
+              path: /tmp/gpu-name.txt
+              default: "unknown"
       nodeSelector:
         gpu: "true"
       podSpecPatch: |
         runtimeClassName: nvidia
       container:
         image: "{{inputs.parameters.image}}"
-        command: [/app/gpu_detect]
+        command: [sh, -c]
+        args:
+          - /app/gpu_detect 2>&1 | tee /tmp/gpu-detect.txt; grep -oP 'GPU.*:\s*\K.+' /tmp/gpu-detect.txt | head -1 > /tmp/gpu-name.txt || echo "GPU detected" > /tmp/gpu-name.txt
         resources:
           requests:
             nvidia.com/gpu: "1"
           limits:
             nvidia.com/gpu: "1"
 
+    # ─── run-evolution ────────────────────────────────────────────────────────
     - name: run-evolution
       inputs:
         parameters:
@@ -83,6 +127,7 @@ spec:
           - name: population-size
           - name: target-loss
           - name: image
+          - name: gpu-name
       outputs:
         parameters:
           - name: best-loss
@@ -115,10 +160,53 @@ spec:
           - name: results
             mountPath: /results
 
+    # ─── register-genome ──────────────────────────────────────────────────────
+    - name: register-genome
+      inputs:
+        parameters:
+          - name: image
+          - name: run-id
+          - name: evolved-loss
+      outputs:
+        parameters:
+          - name: genome-loss
+            valueFrom:
+              path: /tmp/genome-loss.txt
+              default: "N/A"
+          - name: genome-config
+            valueFrom:
+              path: /tmp/genome-config.txt
+              default: "unknown"
+          - name: next-genesis
+            valueFrom:
+              path: /tmp/next-genesis.json
+              default: "{}"
+      container:
+        image: "{{inputs.parameters.image}}"
+        command: [python3]
+        args:
+          - /app/scripts/workflow_register_genome.py
+          - --genome
+          - /results/genome-best.json
+          - --config
+          - /app/evolution_config.json
+          - --run-id
+          - "{{inputs.parameters.run-id}}"
+          - --output-dir
+          - /tmp
+        volumeMounts:
+          - name: results
+            mountPath: /results
+
+    # ─── analyze-results ──────────────────────────────────────────────────────
     - name: analyze-results
       inputs:
         parameters:
           - name: image
+          - name: generations
+          - name: population-size
+          - name: best-loss
+          - name: best-genome-config
       outputs:
         parameters:
           - name: summary

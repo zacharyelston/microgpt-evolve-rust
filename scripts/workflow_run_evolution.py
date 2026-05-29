@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -52,6 +53,12 @@ def run(args: argparse.Namespace) -> None:
     best_loss = m.group(1) if m else "N/A"
     Path("/tmp/best-loss.txt").write_text(best_loss + "\n")
     print(f"[run] Best loss: {best_loss}")
+
+    for genome_name in ["genome-best.json", "genome.json", "genome_fitness_best.json"]:
+        src = Path("/app") / genome_name
+        if src.exists():
+            shutil.copy(src, output_dir / genome_name)
+            print(f"[run] Copied {genome_name} to {output_dir}")
 
     if result.returncode != 0:
         print(f"[run] Binary exited with code {result.returncode}", file=sys.stderr)
