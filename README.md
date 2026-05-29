@@ -22,6 +22,7 @@ Last Evolution (v2) — 10 generations, 80 evaluations, 1820s
   Blacklisted: 1 species (24-1-1-24-3, avg loss 2.83)
 ```
 
+
 A self-modifying Transformer implementation in Rust with zero ML dependencies. Starting from [Andrej Karpathy's microGPT](https://karpathy.github.io/2026/02/12/microgpt/), the project adds a spark of life: an evolutionary engine that discovers optimal hyperparameters and writes them back into the organism, transforming what the program becomes.
 
 ## The Lifecycle
