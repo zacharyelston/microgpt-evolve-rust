@@ -212,10 +212,11 @@ spec:
           - /app/evolution_config.json
           - --run-id
           - "{{inputs.parameters.run-id}}"
-          - --node-name
-          - "{{inputs.parameters.node-name}}"
           - --output-dir
           - /tmp
+        env:
+          - name: EVOLVE_NODE_NAME
+            value: "{{inputs.parameters.node-name}}"
         volumeMounts:
           - name: results
             mountPath: /results
