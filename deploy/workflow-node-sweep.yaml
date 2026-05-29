@@ -1,0 +1,78 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: microgpt-node-sweep-
+  namespace: apollo-cv
+spec:
+  serviceAccountName: apollo-cv-workflow
+  entrypoint: sweep
+  podSpecPatch: |
+    runtimeClassName: nvidia
+
+  templates:
+    - name: sweep
+      steps:
+        - - name: hh-b01
+            template: evolve-on-node
+            arguments:
+              parameters:
+                - name: node
+                  value: "hh-b01.hydra.anceralabs.com"
+          - name: hh-b02
+            template: evolve-on-node
+            arguments:
+              parameters:
+                - name: node
+                  value: "hh-b02.hydra.anceralabs.com"
+          - name: hh-b03
+            template: evolve-on-node
+            arguments:
+              parameters:
+                - name: node
+                  value: "hh-b03.hydra.anceralabs.com"
+          - name: hh-b05
+            template: evolve-on-node
+            arguments:
+              parameters:
+                - name: node
+                  value: "hh-b05.hydra.anceralabs.com"
+          - name: hh-bra-01
+            template: evolve-on-node
+            arguments:
+              parameters:
+                - name: node
+                  value: "hh-bra-01.hydra.anceralabs.com"
+
+    - name: evolve-on-node
+      inputs:
+        parameters:
+          - name: node
+      outputs:
+        parameters:
+          - name: result
+            valueFrom:
+              path: /tmp/result.txt
+              default: "failed"
+      nodeSelector:
+        kubernetes.io/hostname: "{{inputs.parameters.node}}"
+      container:
+        image: ghcr.io/zacharyelston/microgpt-evolve-rust:latest
+        command: [sh, -c]
+        args:
+          - |
+            echo "=== Node: ${NODE_NAME} ===" &&
+            /app/gpu_detect 2>&1 | tee /tmp/gpu-detect.txt &&
+            GPU=$(grep -oP 'GPU.*:\s*\K.+' /tmp/gpu-detect.txt | head -1 || echo "unknown") &&
+            echo "GPU: ${GPU}" &&
+            echo "node=${NODE_NAME} gpu=${GPU} status=ok" > /tmp/result.txt &&
+            cat /tmp/result.txt
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        resources:
+          requests:
+            nvidia.com/gpu: "1"
+          limits:
+            nvidia.com/gpu: "1"
