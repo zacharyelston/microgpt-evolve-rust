@@ -2,12 +2,14 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'src/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'Dockerfile'
+      - 'scripts/**'
+  workflow_dispatch:
 
 jobs:
   build:
