@@ -179,17 +179,21 @@ spec:
         kubernetes.io/hostname: "{{inputs.parameters.node}}"
       container:
         image: "{{inputs.parameters.image}}"
-        command: [python3]
+        command: [sh, -c]
         args:
-          - /app/scripts/workflow_run_evolution.py
-          - --generations
-          - "{{inputs.parameters.generations}}"
-          - --population-size
-          - "{{inputs.parameters.population-size}}"
-          - --target-loss
-          - "{{inputs.parameters.target-loss}}"
-          - --output-dir
-          - /tmp
+          - |
+            python3 /app/scripts/workflow_run_evolution.py \
+              --generations {{inputs.parameters.generations}} \
+              --population-size {{inputs.parameters.population-size}} \
+              --target-loss {{inputs.parameters.target-loss}} \
+              --output-dir /tmp
+            if [ ! -f /tmp/genome-best.json ] && [ -f /tmp/genome.json ]; then
+              cp /tmp/genome.json /tmp/genome-best.json
+              echo "[island] genome.json → genome-best.json"
+            fi
+            if [ ! -f /tmp/genome-best.json ]; then
+              echo '{"loss":99.0}' > /tmp/genome-best.json
+            fi
         env:
           - name: NODE_NAME
             valueFrom:
