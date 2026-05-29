@@ -13,9 +13,11 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
 RUN cargo build --release --features gpu --bin evolve_genesis_config \
+    && cp target/release/evolve_genesis_config target/release/evolve_genesis_config_gpu \
     && cargo build --release --features gpu --bin evolve_gpu_matrix \
     && cargo build --release --features gpu --bin gpu_detect \
-    && cargo build --release --bin evolve_genesis_config
+    && cargo build --release --bin evolve_genesis_config \
+    && cp target/release/evolve_genesis_config target/release/evolve_genesis_config_cpu
 
 # Stage 2: Runtime image
 FROM nvidia/cuda:12.0.0-runtime-ubuntu22.04
@@ -27,14 +29,15 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY --from=builder /build/target/release/evolve_genesis_config ./evolve_genesis_config_cpu
-COPY --from=builder /build/target/release/evolve_genesis_config ./evolve_genesis_config_gpu
+COPY --from=builder /build/target/release/evolve_genesis_config_cpu ./evolve_genesis_config_cpu
+COPY --from=builder /build/target/release/evolve_genesis_config_gpu ./evolve_genesis_config_gpu
 COPY --from=builder /build/target/release/evolve_gpu_matrix ./evolve_gpu_matrix
 COPY --from=builder /build/target/release/gpu_detect ./gpu_detect
 COPY analyze_results.py ./
 COPY analyze_efficiency.py ./
 COPY evolution_config.json ./
 COPY evolution_config_100.json ./
+COPY input.txt ./
 COPY genomes ./genomes
 COPY scripts ./scripts
 

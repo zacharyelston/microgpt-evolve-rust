@@ -10,6 +10,7 @@ Usage:
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -23,6 +24,7 @@ def run(args: argparse.Namespace) -> None:
     cfg["evolution_settings"]["population_size"] = args.population_size
     cfg["evolution_settings"]["target_loss"] = args.target_loss
 
+    os.chdir("/app")
     run_config = Path("evolution_config.json")
     run_config.write_text(json.dumps(cfg, indent=2))
     print(f"[run] Config written: generations={args.generations}, "
