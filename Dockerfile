@@ -40,6 +40,7 @@ COPY evolution_config_100.json ./
 COPY input.txt ./
 COPY genomes ./genomes
 COPY scripts ./scripts
+# scripts: workflow_run_evolution, workflow_analyze, workflow_register_genome
 
 ENV RUST_LOG=info
 
