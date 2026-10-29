@@ -1,0 +1,97 @@
+apiVersion: microgpt.evolve/v1alpha1
+kind: Bundle
+metadata:
+  name: planarian_eyespot_32x32_v1
+  version: "1.0.0"
+  category: vision/layer_0_retina/directional_eyespot_hires
+  author: bio_architect
+  description: "A higher-resolution directional light sensor. Uses a 32x32 quantized grayscale grid with 16 quadrants (8x8 each) to determine light source direction."
+
+architecture:
+  evaluator_core:
+    n_emb: 32
+    n_ctx: 16
+    n_layer: 2
+    n_head: 4
+    n_ff_exp: 4
+  
+  plasticity:
+    l1_prune_penalty: 0.01
+    prune_threshold: 0.05
+    max_surviving_synapses: 16
+
+interface:
+  input_type: "32x32_quantized_grayscale_array"
+  output_type: "probability_vector"
+  output_dim: 5
+
+upstream_nodes:
+  binding_strategy: static_allocation
+  nodes:
+    q0_0:
+      path: "genomes/vision/layer_0_retina/patches/q0_0.json"
+      n_ctx: 64
+      slice: [0, 8, 0, 8]
+    q0_1:
+      path: "genomes/vision/layer_0_retina/patches/q0_1.json"
+      n_ctx: 64
+      slice: [8, 16, 0, 8]
+    q0_2:
+      path: "genomes/vision/layer_0_retina/patches/q0_2.json"
+      n_ctx: 64
+      slice: [16, 24, 0, 8]
+    q0_3:
+      path: "genomes/vision/layer_0_retina/patches/q0_3.json"
+      n_ctx: 64
+      slice: [24, 32, 0, 8]
+    
+    q1_0:
+      path: "genomes/vision/layer_0_retina/patches/q1_0.json"
+      n_ctx: 64
+      slice: [0, 8, 8, 16]
+    q1_1:
+      path: "genomes/vision/layer_0_retina/patches/q1_1.json"
+      n_ctx: 64
+      slice: [8, 16, 8, 16]
+    q1_2:
+      path: "genomes/vision/layer_0_retina/patches/q1_2.json"
+      n_ctx: 64
+      slice: [16, 24, 8, 16]
+    q1_3:
+      path: "genomes/vision/layer_0_retina/patches/q1_3.json"
+      n_ctx: 64
+      slice: [24, 32, 8, 16]
+    
+    q2_0:
+      path: "genomes/vision/layer_0_retina/patches/q2_0.json"
+      n_ctx: 64
+      slice: [0, 8, 16, 24]
+    q2_1:
+      path: "genomes/vision/layer_0_retina/patches/q2_1.json"
+      n_ctx: 64
+      slice: [8, 16, 16, 24]
+    q2_2:
+      path: "genomes/vision/layer_0_retina/patches/q2_2.json"
+      n_ctx: 64
+      slice: [16, 24, 16, 24]
+    q2_3:
+      path: "genomes/vision/layer_0_retina/patches/q2_3.json"
+      n_ctx: 64
+      slice: [24, 32, 16, 24]
+    
+    q3_0:
+      path: "genomes/vision/layer_0_retina/patches/q3_0.json"
+      n_ctx: 64
+      slice: [0, 8, 24, 32]
+    q3_1:
+      path: "genomes/vision/layer_0_retina/patches/q3_1.json"
+      n_ctx: 64
+      slice: [8, 16, 24, 32]
+    q3_2:
+      path: "genomes/vision/layer_0_retina/patches/q3_2.json"
+      n_ctx: 64
+      slice: [16, 24, 24, 32]
+    q3_3:
+      path: "genomes/vision/layer_0_retina/patches/q3_3.json"
+      n_ctx: 64
+      slice: [24, 32, 24, 32]

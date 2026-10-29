@@ -1,0 +1,39 @@
+apiVersion: microgpt.evolve/v1alpha1
+kind: Bundle
+metadata:
+  name: v1_visual_cortex_edge_detector
+  version: "1.0.0"
+  category: vision/v1_cortex
+  author: system_architect
+
+architecture:
+  # The Core Evaluator GPT that will prune the upstream connections
+  evaluator_core:
+    n_emb: 16
+    n_ctx: 16
+    n_layer: 1
+    n_head: 4
+    n_ff_exp: 4
+  
+  # How aggressively the bundle severs weak connections during training
+  plasticity:
+    l1_prune_penalty: 0.005
+    prune_threshold: 0.01  # Any synaptic weight below this is physically dropped
+    max_surviving_synapses: 50 # Hard cap on connections to force efficiency
+
+interface:
+  input_type: dense_embedding_array
+  output_type: probability_vector
+  output_dim: 8 # e.g., 8 different edge orientations
+
+# The "Receptive Field" - Which lower-level MicroGPTs this bundle binds to
+upstream_nodes:
+  binding_strategy: dynamic_query
+  queries:
+    - path: "genomes/vision/layer_0_retina/rods/*"
+      select: top_k
+      k: 40
+      metric: lowest_loss
+    - path: "genomes/vision/layer_0_retina/cones/green/*"
+      select: random
+      k: 10

@@ -19,6 +19,14 @@ use std::{cell::RefCell, collections::HashSet, io::Write, ops::{Add, Mul, Neg, S
 
 pub mod heads;
 pub mod genome;
+pub mod bundle;
+pub mod candle_gpt;
+pub mod blocks;
+
+// New modular experiment system
+pub mod core;
+pub mod components;
+pub mod experiments;
 
 pub use genome::Genome;
 

@@ -1,0 +1,25 @@
+{
+  "name": "basic_3x3_test",
+  "dataset": "eyespot_training_3x3.txt",
+  "feature_type": "Basic",
+  "architecture": {
+    "hidden_layers": [64],
+    "activation": "relu",
+    "dropout": null,
+    "layer_norm": false
+  },
+  "training": {
+    "learning_rate": 0.01,
+    "steps": 5000,
+    "batch_size": 1,
+    "weight_decay": 0.01,
+    "patience": 1000,
+    "eval_frequency": 100
+  },
+  "output": {
+    "save_dir": "experiments/basic_3x3_test",
+    "save_frequency": 1000,
+    "verbose": true,
+    "plots": false
+  }
+}

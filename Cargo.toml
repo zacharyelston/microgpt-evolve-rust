@@ -7,12 +7,15 @@ default-run = "microgpt_rust"
 [dependencies]
 rand = "0.8"
 rayon = "1.10"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
 serde_json = "1.0"
 ratatui = "0.26"
 crossterm = "0.27"
+candle-core = { version = "0.8.4", features = ["metal"] }
+candle-nn = { version = "0.8.4", features = ["metal"] }
 
 [profile.release]
 opt-level = 3

@@ -1,0 +1,14 @@
+genomes/
+├── vision/
+│   ├── layer_1_v1_cortex/      # Edge and color detectors (looks at 4x4 pixel patches)
+│   │   ├── horizontal_edge/
+│   │   ├── vertical_edge/
+│   │   ├── red_green_contrast/
+│   ├── layer_2_v2_cortex/      # Shapes and textures (Evaluators listening to V1)
+│   │   ├── right_angle_corner/
+│   │   ├── smooth_curve/
+│   ├── layer_3_v4_cortex/      # Complex parts (Evaluators listening to V2)
+│   │   ├── eye_detector/
+│   │   ├── wheel_detector/
+│   └── layer_4_it_cortex/      # Full objects (Evaluators listening to V4)
+│       └── face_recognizer/

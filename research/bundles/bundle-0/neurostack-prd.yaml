@@ -1,0 +1,65 @@
+apiVersion: microgpt.evolve/v1alpha1
+kind: Neurostack
+metadata:
+  name: binocular_vision_stack
+  version: "1.0.0"
+  description: "A bilateral visual processing stack mimicking binocular depth perception."
+
+global_hyperparameters:
+  rms_eps: 1e-5
+  init_scale: 0.1
+
+topology:
+  # ---------------------------------------------------------
+  # LAYER 0: The Sensors (Independent)
+  # ---------------------------------------------------------
+  layer_0_retina:
+    left_hemisphere:
+      bundle_ref: "bundles/retina_foveated_left.yaml"
+      input_stream: "camera_0_left"
+    right_hemisphere:
+      bundle_ref: "bundles/retina_foveated_right.yaml"
+      input_stream: "camera_1_right"
+
+  # ---------------------------------------------------------
+  # LAYER 1: Primary Processing (Independent)
+  # ---------------------------------------------------------
+  layer_1_v1:
+    left_hemisphere:
+      bundle_ref: "bundles/v1_edge_detector.yaml"
+      upstream_target: "layer_0_retina.left_hemisphere"
+    right_hemisphere:
+      bundle_ref: "bundles/v1_edge_detector.yaml"
+      upstream_target: "layer_0_retina.right_hemisphere"
+
+  # ---------------------------------------------------------
+  # LAYER 2: The Corpus Callosum (Cross-Talk)
+  # ---------------------------------------------------------
+  # This is where the left and right brains finally talk to each other.
+  # They don't share raw pixels; they share compressed "beliefs" (embeddings).
+  layer_2_integration:
+    corpus_callosum:
+      type: cross_attention_bridge
+      bandwidth_limit: 128_tokens  # Constrain data flow to force high-level abstractions
+      
+    left_hemisphere:
+      bundle_ref: "bundles/v2_shape_evaluator.yaml"
+      upstream_targets: 
+        - "layer_1_v1.left_hemisphere"
+        - "layer_1_v1.right_hemisphere" # Receives contralateral data via corpus callosum
+        
+    right_hemisphere:
+      bundle_ref: "bundles/v2_shape_evaluator.yaml"
+      upstream_targets: 
+        - "layer_1_v1.right_hemisphere"
+        - "layer_1_v1.left_hemisphere" # Receives contralateral data via corpus callosum
+
+  # ---------------------------------------------------------
+  # LAYER 3: The Apex / Output
+  # ---------------------------------------------------------
+  layer_3_apex:
+    unified_cortex:
+      bundle_ref: "bundles/depth_and_object_evaluator.yaml"
+      upstream_targets:
+        - "layer_2_integration.left_hemisphere"
+        - "layer_2_integration.right_hemisphere"

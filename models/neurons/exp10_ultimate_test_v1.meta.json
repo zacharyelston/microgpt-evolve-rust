@@ -1,0 +1,52 @@
+{
+  "accuracy": 95.0,
+  "architecture": "single_neuron",
+  "config": {
+    "architecture": {
+      "activation": "relu",
+      "dropout": 0.25,
+      "hidden_layers": [
+        512,
+        256,
+        128,
+        64,
+        32,
+        16
+      ],
+      "input_dim": 14,
+      "output_dim": 10
+    },
+    "data": {
+      "augmentation": {
+        "intensity_shift": 0.07999999821186066,
+        "noise_std": 0.15000000596046448
+      },
+      "source": "grayscale_training_1x1_100_percent.txt",
+      "validation_split": 0.009999999776482582
+    },
+    "logging": {
+      "debug": false,
+      "level": "info",
+      "save_frequency": 2000,
+      "tensorboard": false
+    },
+    "optimization": {
+      "beta1": 0.9990000128746033,
+      "beta2": 0.9990000128746033,
+      "eps": 9.999999717180685e-10,
+      "optimizer": "adamw",
+      "weight_decay": 9.999999747378752e-6
+    },
+    "training": {
+      "batch_size": 512,
+      "early_stopping": {
+        "min_improvement": 0.00019999999494757503,
+        "patience": 3000
+      },
+      "eval_frequency": 1000,
+      "learning_rate": 0.00019999999494757503,
+      "steps": 10000
+    }
+  },
+  "training_time": 9.499359542
+}

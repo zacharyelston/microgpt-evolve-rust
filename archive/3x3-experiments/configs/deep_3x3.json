@@ -1,0 +1,25 @@
+{
+  "name": "deep_3x3_test",
+  "dataset": "eyespot_training_3x3.txt",
+  "feature_type": "Enhanced",
+  "architecture": {
+    "hidden_layers": [512, 256, 128, 64],
+    "activation": "relu",
+    "dropout": 0.2,
+    "layer_norm": true
+  },
+  "training": {
+    "learning_rate": 0.001,
+    "steps": 100000,
+    "batch_size": 1,
+    "weight_decay": 0.01,
+    "patience": 10000,
+    "eval_frequency": 2000
+  },
+  "output": {
+    "save_dir": "experiments/deep_3x3_test",
+    "save_frequency": 10000,
+    "verbose": true,
+    "plots": true
+  }
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "name": "exp01_basic_neuron",
+    "success": true,
+    "duration": {
+      "secs": 6,
+      "nanos": 876072375
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp02_larger_neuron",
+    "success": true,
+    "duration": {
+      "secs": 6,
+      "nanos": 558335458
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp03_bundle_foundation",
+    "success": true,
+    "duration": {
+      "secs": 6,
+      "nanos": 714780958
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp04_evolution_test",
+    "success": true,
+    "duration": {
+      "secs": 7,
+      "nanos": 446859375
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp05_optimization_test",
+    "success": true,
+    "duration": {
+      "secs": 5,
+      "nanos": 596532291
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp06_performance_test",
+    "success": true,
+    "duration": {
+      "secs": 4,
+      "nanos": 66323667
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp07_production_scale",
+    "success": true,
+    "duration": {
+      "secs": 3,
+      "nanos": 758361917
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp08_ensemble_test",
+    "success": true,
+    "duration": {
+      "secs": 4,
+      "nanos": 41373042
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp09_adaptive_test",
+    "success": true,
+    "duration": {
+      "secs": 5,
+      "nanos": 919268041
+    },
+    "exit_code": 0
+  },
+  {
+    "name": "exp10_ultimate_test",
+    "success": true,
+    "duration": {
+      "secs": 10,
+      "nanos": 58061791
+    },
+    "exit_code": 0
+  }
+]

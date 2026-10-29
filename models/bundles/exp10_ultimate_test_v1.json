@@ -1,0 +1,6 @@
+{
+  "architecture": "bundle_system",
+  "direction_output_dim": 9,
+  "neuron_count": 9,
+  "spatial_hidden_dim": 1024
+}
