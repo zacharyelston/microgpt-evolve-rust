@@ -252,6 +252,19 @@ fn bootstrap_margin(y: &[f64], p_self: &[f64], p_cross: &[f64], seed: u64) -> (f
     (d[25], d[974])
 }
 
+fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
+    let mut rng = StdRng::seed_from_u64(seed ^ 0xb007);
+    let n = y.len();
+    let mut s: Vec<f64> = (0..1000).map(|_| {
+        let idx: Vec<usize> = (0..n).map(|_| rng.gen_range(0..n)).collect();
+        let yy: Vec<f64> = idx.iter().map(|&i| y[i]).collect();
+        let pp: Vec<f64> = idx.iter().map(|&i| p[i]).collect();
+        r2(&yy, &pp)
+    }).collect();
+    s.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    (s[25], s[974])
+}
+
 fn main() {
     let cfg = parse_args();
     let raw = load_training_data(&cfg.input);
@@ -311,12 +324,32 @@ fn main() {
         rows.insert("margin".into(), serde_json::json!({"self_minus_cross_r2": margin, "ci95": [lo, hi]}));
         report.insert(tname.into(), serde_json::Value::Object(rows));
     }
+    // Residual test: d = A's loss - B's loss cancels the difficulty both models share
+    // (mostly the text), leaving each model's idiosyncratic part. A's states can only
+    // see A's part of d, B's states only B's; text should see ~nothing.
+    let d: Vec<f64> = loss_a.iter().zip(&loss_b).map(|(a, b)| a - b).collect();
+    let var = |v: &[f64]| { let m = v.iter().sum::<f64>() / v.len() as f64;
+                            v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / v.len() as f64 };
+    let both: Vec<Vec<f64>> = feat_a.iter().zip(&feat_b).map(|(a, b)| [a.clone(), b.clone()].concat()).collect();
+    println!("residual target d = A's loss - B's loss: var(d)/var(A's loss) = {:.3}",
+             var(&d) / var(&loss_a));
+    let (fy, ty) = (&d[..h], &d[h..]);
+    let mut res = serde_json::Map::new();
+    for (label, feats) in [("A's hidden states", &feat_a), ("B's hidden states", &feat_b),
+                           ("both models' states", &both), ("bag-of-characters (text control)", &text_bag)] {
+        let (fx, tx) = split(feats);
+        let p = readout(&fx, fy, &tx);
+        let (rr, (lo, hi)) = (r2(ty, &p), bootstrap_r2(ty, &p, cfg.seed));
+        println!("{:<10} {:<34} {:>7.3}  95% CI [{:+.3}, {:+.3}]", "A - B", label, rr, lo, hi);
+        res.insert(label.into(), serde_json::json!({"r2": rr, "pearson": pearson(ty, &p), "ci95": [lo, hi]}));
+    }
     let out = serde_json::json!({
         "config": {"steps": cfg.steps, "emb": cfg.emb, "layer": cfg.layer, "head": cfg.head,
                    "ctx": cfg.ctx, "ff": cfg.ff, "lr": cfg.lr, "probe": cfg.probe, "seed": cfg.seed},
         "train_loss_ema": {"A": ema_a, "B": ema_b},
         "loss_correlation_A_B": pearson(&loss_a, &loss_b),
         "results": report,
+        "residual_A_minus_B": {"var_ratio": var(&d) / var(&loss_a), "predictors": res},
     });
     let path = format!("results/self_report_{}.json", chrono::Local::now().format("%Y%m%d_%H%M%S"));
     std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).unwrap();
