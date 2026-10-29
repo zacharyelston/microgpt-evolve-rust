@@ -32,11 +32,13 @@ use std::time::Instant;
 struct Cfg {
     steps: usize, emb: usize, layer: usize, head: usize, ctx: usize, ff: usize,
     lr: f64, probe: usize, seed: u64, input: String,
+    stage: usize, inject_layer: usize, sigma_max: f64,
 }
 
 fn parse_args() -> Cfg {
     let mut c = Cfg { steps: 4000, emb: 16, layer: 2, head: 4, ctx: 16, ff: 4, lr: 0.01,
-                      probe: 2000, seed: 7, input: "input.txt".into() };
+                      probe: 2000, seed: 7, input: "input.txt".into(),
+                      stage: 1, inject_layer: 0, sigma_max: 1.0 };
     let a: Vec<String> = std::env::args().collect();
     let mut i = 1;
     while i + 1 < a.len() {
@@ -47,6 +49,9 @@ fn parse_args() -> Cfg {
             "--ctx" => c.ctx = v.parse().unwrap(), "--ff" => c.ff = v.parse().unwrap(),
             "--lr" => c.lr = v.parse().unwrap(), "--probe" => c.probe = v.parse().unwrap(),
             "--seed" => c.seed = v.parse().unwrap(), "--data" => c.input = v.clone(),
+            "--stage" => c.stage = v.parse().unwrap(),
+            "--inject-layer" => c.inject_layer = v.parse().unwrap(),
+            "--sigma-max" => c.sigma_max = v.parse().unwrap(),
             other => panic!("unknown flag {other}"),
         }
         i += 2;
@@ -73,6 +78,20 @@ fn seeded_gpt(seed: u64, v: usize, cfg: &Cfg) -> GPT {
 // The library's forward, but also returning the final normed hidden state: the
 // "internals" a self-report may read. Kept line-for-line with GPT::forward.
 fn forward_h(m: &GPT, t: usize, pos: usize, k: &mut [Vec<Vec1>], v: &mut [Vec<Vec1>]) -> (Vec1, Vec<f64>) {
+    forward_noisy(m, t, pos, k, v, None)
+}
+
+// Stage 3's perturbation: after layer `layer`, add Gaussian noise of size
+// sigma * rms(x) to every residual-stream component (fresh noise per position).
+pub struct Noise<'a> { layer: usize, sigma: f64, rng: &'a mut StdRng }
+
+fn gauss(rng: &mut StdRng) -> f64 {
+    let (u1, u2): (f64, f64) = (rng.gen::<f64>().max(1e-12), rng.gen());
+    (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
+}
+
+fn forward_noisy(m: &GPT, t: usize, pos: usize, k: &mut [Vec<Vec1>], v: &mut [Vec<Vec1>],
+                 mut noise: Option<&mut Noise>) -> (Vec1, Vec<f64>) {
     let mut x: Vec1 = m.wte[t].iter().zip(&m.wpe[pos]).map(|(t, p)| t + p).collect();
     let hd = x.len() / m.n_head;
     for i in 0..m.wq.len() {
@@ -97,6 +116,12 @@ fn forward_h(m: &GPT, t: usize, pos: usize, k: &mut [Vec<Vec1>], v: &mut [Vec<Ve
         let xn = rmsnorm(&x, m.rms_eps);
         let h = linear(&xn, &m.fc1[i]).iter().map(|v| v.relu()).collect::<Vec1>();
         x = x.iter().zip(linear(&h, &m.fc2[i])).map(|(x, m)| x + m).collect();
+        if let Some(n) = noise.as_deref_mut() {
+            if n.layer == i && n.sigma > 0.0 {
+                let rms = (x.iter().map(|v| v.data().powi(2)).sum::<f64>() / x.len() as f64).sqrt();
+                x = x.iter().map(|v| v + &Val::new(n.sigma * rms * gauss(&mut *n.rng))).collect();
+            }
+        }
     }
     let hn = rmsnorm(&x, m.rms_eps);
     let hidden = hn.iter().map(|v| v.data()).collect();
@@ -252,6 +277,94 @@ fn bootstrap_margin(y: &[f64], p_self: &[f64], p_cross: &[f64], seed: u64) -> (f
     (d[25], d[974])
 }
 
+// Stage 3 probe: loss, hidden-state features (as in stage 1), and outputs-only
+// features: statistics of the predicted distributions that need no knowledge of
+// the true next character (mean / sd / last entropy, mean top probability, length).
+fn probe3(m: &GPT, name: &str, chars: &[char], cfg: &Cfg, mut noise: Option<&mut Noise>)
+          -> (f64, Vec<f64>, Vec<f64>) {
+    let toks = tokens(name, chars, cfg.ctx);
+    let (mut kc, mut vc) = (vec![vec![]; cfg.layer], vec![vec![]; cfg.layer]);
+    let (mut nll, mut sum, mut last) = (0.0, vec![0.0; cfg.emb], vec![0.0; cfg.emb]);
+    let (mut ents, mut tops) = (vec![], vec![]);
+    for p in 0..toks.len() {
+        let (logits, h) = forward_noisy(m, toks[p], p, &mut kc, &mut vc, noise.as_deref_mut());
+        if p + 1 < toks.len() {
+            let q: Vec<f64> = softmax(&logits).iter().map(|v| v.data()).collect();
+            nll -= q[toks[p + 1]].ln();
+            ents.push(-q.iter().filter(|&&x| x > 0.0).map(|x| x * x.ln()).sum::<f64>());
+            tops.push(q.iter().cloned().fold(0.0, f64::max));
+        }
+        for j in 0..cfg.emb { sum[j] += h[j]; }
+        last = h;
+    }
+    let n = toks.len() as f64;
+    let mut f: Vec<f64> = sum.iter().map(|s| s / n).collect();
+    f.extend(last);
+    let k = ents.len() as f64;
+    let me = ents.iter().sum::<f64>() / k;
+    let sd = (ents.iter().map(|e| (e - me).powi(2)).sum::<f64>() / k).sqrt();
+    let out = vec![me, sd, *ents.last().unwrap(), tops.iter().sum::<f64>() / k, k];
+    (nll / k, f, out)
+}
+
+fn stage3(a: &GPT, b: &GPT, probe_names: &[&str], chars: &[char], cfg: &Cfg,
+          text_bag: &[Vec<f64>]) -> serde_json::Value {
+    let mut srng = StdRng::seed_from_u64(cfg.seed ^ 0x51);
+    let sigma: Vec<f64> = probe_names.iter().map(|_| srng.gen_range(0.0..cfg.sigma_max)).collect();
+    let t0 = Instant::now();
+    let (mut l0, mut ls, mut hs, mut os, mut hb) = (vec![], vec![], vec![], vec![], vec![]);
+    for (i, n) in probe_names.iter().enumerate() {
+        l0.push(probe3(a, n, chars, cfg, None).0);
+        let mut nrng = StdRng::seed_from_u64(cfg.seed * 1_000_003 + i as u64);
+        let mut noise = Noise { layer: cfg.inject_layer, sigma: sigma[i], rng: &mut nrng };
+        let (l, h, o) = probe3(a, n, chars, cfg, Some(&mut noise));
+        ls.push(l); hs.push(h); os.push(o);
+        hb.push(probe3(b, n, chars, cfg, None).1);
+    }
+    eprintln!("  stage 3: probed {} names x 3 passes in {:.0}s", probe_names.len(),
+              t0.elapsed().as_secs_f64());
+    let dl: Vec<f64> = ls.iter().zip(&l0).map(|(s, c)| s - c).collect();
+    println!("\nstage 3: noise after layer {} with sigma ~ U(0, {}) x rms(residual), fresh per position",
+             cfg.inject_layer, cfg.sigma_max);
+    println!("clean loss {:.4}  perturbed loss {:.4}  mean change {:+.4}  r(sigma, change) = {:.3}",
+             l0.iter().sum::<f64>() / l0.len() as f64, ls.iter().sum::<f64>() / ls.len() as f64,
+             dl.iter().sum::<f64>() / dl.len() as f64, pearson(&sigma, &dl));
+    let both: Vec<Vec<f64>> = hs.iter().zip(&os).map(|(h, o)| [h.clone(), o.clone()].concat()).collect();
+    let h = cfg.probe / 2;
+    let split = |v: &[Vec<f64>]| (v[..h].to_vec(), v[h..].to_vec());
+    let mut out = serde_json::Map::new();
+    println!("\n{:<20} {:<36} {:>7}  {}", "target", "predictor", "R2", "95% CI");
+    for (tname, y) in [("perturbed loss", &ls), ("change from noise", &dl), ("noise level sigma", &sigma)] {
+        let (fy, ty) = (&y[..h], &y[h..]);
+        let mut rows = serde_json::Map::new();
+        for (label, feats) in [("self: own perturbed hidden states", &hs),
+                               ("outputs only (no targets)", &os),
+                               ("self + outputs", &both),
+                               ("cross: sibling's clean states", &hb),
+                               ("text: bag of characters", &text_bag.to_vec())] {
+            let (fx, tx) = split(feats);
+            let p = readout(&fx, fy, &tx);
+            let (rr, (lo, hi)) = (r2(ty, &p), bootstrap_r2(ty, &p, cfg.seed));
+            println!("{:<20} {:<36} {:>7.3}  [{:+.3}, {:+.3}]", tname, label, rr, lo, hi);
+            rows.insert(label.into(), serde_json::json!({"r2": rr, "ci95": [lo, hi]}));
+        }
+        // the key contrast: own internal state vs own outputs, on the same names
+        let (fx, tx) = split(&hs);
+        let p_self = readout(&fx, fy, &tx);
+        let (fx, tx) = split(&os);
+        let p_out = readout(&fx, fy, &tx);
+        let m = r2(ty, &p_self) - r2(ty, &p_out);
+        let (lo, hi) = bootstrap_margin(ty, &p_self, &p_out, cfg.seed);
+        println!("{:<20} self - outputs-only margin: {:+.3}  95% CI [{:+.3}, {:+.3}]\n", tname, m, lo, hi);
+        rows.insert("self_minus_outputs".into(), serde_json::json!({"r2": m, "ci95": [lo, hi]}));
+        out.insert(tname.into(), serde_json::Value::Object(rows));
+    }
+    serde_json::json!({"inject_layer": cfg.inject_layer, "sigma_max": cfg.sigma_max,
+                       "clean_loss": l0.iter().sum::<f64>() / l0.len() as f64,
+                       "perturbed_loss": ls.iter().sum::<f64>() / ls.len() as f64,
+                       "r_sigma_change": pearson(&sigma, &dl), "results": out})
+}
+
 fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
     let mut rng = StdRng::seed_from_u64(seed ^ 0xb007);
     let n = y.len();
@@ -280,6 +393,22 @@ fn main() {
     println!("params per model: {}", a.params().len());
     let ema_a = train(&a, train_names, &chars, &cfg, 1, "A");
     let ema_b = train(&b, train_names, &chars, &cfg, 2, "B");
+
+    if cfg.stage == 3 {
+        let bag: Vec<Vec<f64>> = probe_names.iter().map(|n| {
+            let mut v = vec![0.0; chars.len()];
+            for c in n.chars() { v[chars.iter().position(|&x| x == c).unwrap()] += 1.0; }
+            v }).collect();
+        let res = stage3(&a, &b, probe_names, &chars, &cfg, &bag);
+        let out = serde_json::json!({
+            "config": {"stage": 3, "steps": cfg.steps, "emb": cfg.emb, "layer": cfg.layer,
+                       "head": cfg.head, "ctx": cfg.ctx, "probe": cfg.probe, "seed": cfg.seed},
+            "train_loss_ema": {"A": ema_a, "B": ema_b}, "stage3": res});
+        let path = format!("results/self_perturb_{}.json", chrono::Local::now().format("%Y%m%d_%H%M%S"));
+        std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).unwrap();
+        println!("wrote {path}");
+        return;
+    }
 
     let t0 = Instant::now();
     let (pa, pb): (Vec<_>, Vec<_>) = probe_names.iter()
