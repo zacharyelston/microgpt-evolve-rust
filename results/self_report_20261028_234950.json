@@ -1,0 +1,70 @@
+{
+  "config": {
+    "ctx": 16,
+    "emb": 16,
+    "ff": 4,
+    "head": 4,
+    "layer": 2,
+    "lr": 0.01,
+    "probe": 2000,
+    "seed": 7,
+    "steps": 10000
+  },
+  "loss_correlation_A_B": 0.9519476239758042,
+  "results": {
+    "A's loss": {
+      "bag-of-characters baseline": {
+        "pearson": 0.6600677152396707,
+        "r2": 0.43305402480055666
+      },
+      "cross (sibling's hidden states)": {
+        "pearson": 0.6273443229900014,
+        "r2": 0.39138027925233754
+      },
+      "length baseline": {
+        "pearson": 0.42218988741122615,
+        "r2": 0.17035261368308707
+      },
+      "margin": {
+        "ci95": [
+          -0.08984330275029173,
+          0.0023434274928073595
+        ],
+        "self_minus_cross_r2": -0.04553504252144758
+      },
+      "self (own hidden states)": {
+        "pearson": 0.5883009853574988,
+        "r2": 0.34584523673088996
+      }
+    },
+    "B's loss": {
+      "bag-of-characters baseline": {
+        "pearson": 0.6619561400004114,
+        "r2": 0.43423908230348873
+      },
+      "cross (sibling's hidden states)": {
+        "pearson": 0.5893642538014642,
+        "r2": 0.3471047129263427
+      },
+      "length baseline": {
+        "pearson": 0.4176730404405039,
+        "r2": 0.17010723388659688
+      },
+      "margin": {
+        "ci95": [
+          -0.014840145663574167,
+          0.08940328777861772
+        ],
+        "self_minus_cross_r2": 0.040168796036161525
+      },
+      "self (own hidden states)": {
+        "pearson": 0.6236369780514206,
+        "r2": 0.38727350896250423
+      }
+    }
+  },
+  "train_loss_ema": {
+    "A": 2.3080893276636547,
+    "B": 2.3488841544094448
+  }
+}
