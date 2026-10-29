@@ -1,0 +1,324 @@
+/*
+    Self-Report, Stage 1: does a model have privileged access to its own loss?
+
+    Two identical MicroGPTs, A and B, learn the same names from different seeds.
+    On names neither has seen, each model's own loss is measured exactly. Then a
+    linear readout (ridge regression) is fitted on hidden states to predict a
+    model's loss:
+
+      self   A's hidden states -> A's loss      (B's -> B's)
+      cross  B's hidden states -> A's loss      (A's -> B's)
+
+    B knows names as well as A does but has no access to A's internals, so
+    whatever "self" predicts beyond "cross" is information A holds about its own
+    processing that the text, and a sibling model of the text, do not carry.
+    That margin is the stage-1 measure of privileged self-access.
+
+    Baselines: name length (+ length^2) and bag-of-characters, the obvious text
+    statistics behind "this name is hard".
+
+    The readout is fitted on half of the probe names and scored on the other half
+    (R^2, Pearson r); a bootstrap over the scored names gives a 95% interval on
+    the self-minus-cross margin.
+
+        cargo run --release --bin self_report -- [--steps 4000] [--emb 16] \
+            [--layer 2] [--head 4] [--ctx 16] [--probe 2000] [--seed 7]
+*/
+
+use microgpt_rust::{build_vocab, linear, load_training_data, rmsnorm, softmax, Mat2, Val, Vec1, GPT};
+use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
+use std::time::Instant;
+
+struct Cfg {
+    steps: usize, emb: usize, layer: usize, head: usize, ctx: usize, ff: usize,
+    lr: f64, probe: usize, seed: u64, input: String,
+}
+
+fn parse_args() -> Cfg {
+    let mut c = Cfg { steps: 4000, emb: 16, layer: 2, head: 4, ctx: 16, ff: 4, lr: 0.01,
+                      probe: 2000, seed: 7, input: "input.txt".into() };
+    let a: Vec<String> = std::env::args().collect();
+    let mut i = 1;
+    while i + 1 < a.len() {
+        let v = &a[i + 1];
+        match a[i].as_str() {
+            "--steps" => c.steps = v.parse().unwrap(), "--emb" => c.emb = v.parse().unwrap(),
+            "--layer" => c.layer = v.parse().unwrap(), "--head" => c.head = v.parse().unwrap(),
+            "--ctx" => c.ctx = v.parse().unwrap(), "--ff" => c.ff = v.parse().unwrap(),
+            "--lr" => c.lr = v.parse().unwrap(), "--probe" => c.probe = v.parse().unwrap(),
+            "--seed" => c.seed = v.parse().unwrap(), "--data" => c.input = v.clone(),
+            other => panic!("unknown flag {other}"),
+        }
+        i += 2;
+    }
+    c
+}
+
+// --- a seeded GPT (the library's mat() uses thread_rng, so runs would not repeat) ---
+fn seeded_mat(rng: &mut StdRng, r: usize, c: usize, scale: f64) -> Mat2 {
+    (0..r).map(|_| (0..c).map(|_| Val::new(rng.gen_range(-1.0..1.0) * scale)).collect()).collect()
+}
+
+fn seeded_gpt(seed: u64, v: usize, cfg: &Cfg) -> GPT {
+    let mut rng = StdRng::seed_from_u64(seed);
+    let (d, l, s) = (cfg.emb, cfg.layer, 0.1);
+    let mut layers = |r: usize, c: usize| (0..l).map(|_| seeded_mat(&mut rng, r, c, s)).collect::<Vec<_>>();
+    let (wq, wk, wv, wo) = (layers(d, d), layers(d, d), layers(d, d), layers(d, d));
+    let (fc1, fc2) = (layers(cfg.ff * d, d), layers(d, cfg.ff * d));
+    GPT { wte: seeded_mat(&mut rng, v, d, s), wpe: seeded_mat(&mut rng, cfg.ctx, d, s),
+          lm_head: seeded_mat(&mut rng, v, d, s), wq, wk, wv, wo, fc1, fc2,
+          n_head: cfg.head, rms_eps: 1e-5 }
+}
+
+// The library's forward, but also returning the final normed hidden state: the
+// "internals" a self-report may read. Kept line-for-line with GPT::forward.
+fn forward_h(m: &GPT, t: usize, pos: usize, k: &mut [Vec<Vec1>], v: &mut [Vec<Vec1>]) -> (Vec1, Vec<f64>) {
+    let mut x: Vec1 = m.wte[t].iter().zip(&m.wpe[pos]).map(|(t, p)| t + p).collect();
+    let hd = x.len() / m.n_head;
+    for i in 0..m.wq.len() {
+        let xn = rmsnorm(&x, m.rms_eps);
+        let q = linear(&xn, &m.wq[i]);
+        k[i].push(linear(&xn, &m.wk[i]));
+        v[i].push(linear(&xn, &m.wv[i]));
+        let mut att = vec![];
+        for h in 0..m.n_head {
+            let r = h * hd..(h + 1) * hd;
+            let scale = Val::new((hd as f64).sqrt().recip());
+            let scores: Vec1 = k[i].iter().map(|kt| q[r.clone()].iter().zip(&kt[r.clone()])
+                .map(|(a, b)| a * b).fold(Val::new(0.), |a, b| a + b) * &scale).collect();
+            let w = softmax(&scores);
+            let mut out = (0..hd).map(|_| Val::new(0.)).collect::<Vec1>();
+            for (t, wt) in w.iter().enumerate() {
+                for (j, val) in v[i][t][r.clone()].iter().enumerate() { out[j] = &out[j] + &(wt * val); }
+            }
+            att.extend(out);
+        }
+        x = x.iter().zip(linear(&att, &m.wo[i])).map(|(x, a)| x + a).collect();
+        let xn = rmsnorm(&x, m.rms_eps);
+        let h = linear(&xn, &m.fc1[i]).iter().map(|v| v.relu()).collect::<Vec1>();
+        x = x.iter().zip(linear(&h, &m.fc2[i])).map(|(x, m)| x + m).collect();
+    }
+    let hn = rmsnorm(&x, m.rms_eps);
+    let hidden = hn.iter().map(|v| v.data()).collect();
+    (linear(&hn, &m.lm_head), hidden)
+}
+
+fn tokens(name: &str, chars: &[char], ctx: usize) -> Vec<usize> {
+    let end = chars.len();
+    let mut t: Vec<usize> = std::iter::once(end)
+        .chain(name.chars().map(|c| chars.iter().position(|&x| x == c).unwrap()))
+        .chain(std::iter::once(end)).collect();
+    t.truncate(ctx);
+    t
+}
+
+fn train(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, seed: u64, tag: &str) -> f64 {
+    let params = m.params();
+    let (mut mo, mut ve) = (vec![0.; params.len()], vec![0.; params.len()]);
+    let (b1, b2, eps) = (0.85, 0.99, 1e-8);
+    let mut order: Vec<usize> = (0..names.len()).collect();
+    order.shuffle(&mut StdRng::seed_from_u64(seed ^ 0x5eed));
+    let (mut ema, t0) = (0.0, Instant::now());
+    for step in 0..cfg.steps {
+        let toks = tokens(names[order[step % order.len()]], chars, cfg.ctx);
+        let (mut kc, mut vc) = (vec![vec![]; cfg.layer], vec![vec![]; cfg.layer]);
+        let mut loss = Val::new(0.);
+        for p in 0..toks.len() - 1 {
+            let (logits, _) = forward_h(m, toks[p], p, &mut kc, &mut vc);
+            loss = &loss - &softmax(&logits)[toks[p + 1]].log();
+        }
+        loss = &loss * &Val::new(((toks.len() - 1) as f64).recip());
+        ema = if step == 0 { loss.data() } else { 0.99 * ema + 0.01 * loss.data() };
+        for p in &params { p.zero(); }
+        loss.backward();
+        let lr = cfg.lr * (1. - step as f64 / cfg.steps as f64);
+        for (i, p) in params.iter().enumerate() {
+            let g = p.grad();
+            mo[i] = b1 * mo[i] + (1. - b1) * g;
+            ve[i] = b2 * ve[i] + (1. - b2) * g * g;
+            let (mh, vh) = (mo[i] / (1. - b1.powi(step as i32 + 1)), ve[i] / (1. - b2.powi(step as i32 + 1)));
+            p.0.borrow_mut().data -= lr * mh / (vh.sqrt() + eps);
+        }
+        if step % 500 == 0 || step + 1 == cfg.steps {
+            eprintln!("  [{tag}] step {step:5}  loss(ema) {ema:.4}  {:.0}s", t0.elapsed().as_secs_f64());
+        }
+    }
+    ema
+}
+
+// Per name: the model's own mean NLL, and features from its hidden states
+// (mean over positions, plus the state after reading the end token).
+fn probe(m: &GPT, name: &str, chars: &[char], cfg: &Cfg) -> (f64, Vec<f64>) {
+    let toks = tokens(name, chars, cfg.ctx);
+    let (mut kc, mut vc) = (vec![vec![]; cfg.layer], vec![vec![]; cfg.layer]);
+    let (mut nll, mut sum, mut last) = (0.0, vec![0.0; cfg.emb], vec![0.0; cfg.emb]);
+    for p in 0..toks.len() {
+        let (logits, h) = forward_h(m, toks[p], p, &mut kc, &mut vc);
+        if p + 1 < toks.len() {
+            nll -= softmax(&logits)[toks[p + 1]].data().ln();
+        }
+        for j in 0..cfg.emb { sum[j] += h[j]; }
+        last = h;
+    }
+    let n = toks.len() as f64;
+    let mut f: Vec<f64> = sum.iter().map(|s| s / n).collect();
+    f.extend(last);
+    (nll / (toks.len() - 1) as f64, f)
+}
+
+// --- ridge regression (closed form; feature dims here are <= 33) ---
+fn solve(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec<f64> {
+    let n = b.len();
+    for c in 0..n {
+        let p = (c..n).max_by(|&i, &j| a[i][c].abs().partial_cmp(&a[j][c].abs()).unwrap()).unwrap();
+        a.swap(c, p); b.swap(c, p);
+        for r in c + 1..n {
+            let f = a[r][c] / a[c][c];
+            for k in c..n { a[r][k] -= f * a[c][k]; }
+            b[r] -= f * b[c];
+        }
+    }
+    let mut x = vec![0.0; n];
+    for r in (0..n).rev() {
+        x[r] = (b[r] - (r + 1..n).map(|k| a[r][k] * x[k]).sum::<f64>()) / a[r][r];
+    }
+    x
+}
+
+fn standardize(train: &[Vec<f64>], test: &[Vec<f64>]) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
+    let d = train[0].len();
+    let mu: Vec<f64> = (0..d).map(|j| train.iter().map(|r| r[j]).sum::<f64>() / train.len() as f64).collect();
+    let sd: Vec<f64> = (0..d).map(|j| (train.iter().map(|r| (r[j] - mu[j]).powi(2)).sum::<f64>()
+        / train.len() as f64).sqrt().max(1e-9)).collect();
+    let z = |rows: &[Vec<f64>]| rows.iter().map(|r| {
+        let mut v: Vec<f64> = r.iter().enumerate().map(|(j, x)| (x - mu[j]) / sd[j]).collect();
+        v.push(1.0);
+        v
+    }).collect::<Vec<_>>();
+    (z(train), z(test))
+}
+
+fn ridge_fit(x: &[Vec<f64>], y: &[f64], lambda: f64) -> Vec<f64> {
+    let d = x[0].len();
+    let mut a = vec![vec![0.0; d]; d];
+    let mut b = vec![0.0; d];
+    for (r, t) in x.iter().zip(y) {
+        for i in 0..d { b[i] += r[i] * t; for j in 0..d { a[i][j] += r[i] * r[j]; } }
+    }
+    for i in 0..d - 1 { a[i][i] += lambda; }        // no penalty on the bias
+    solve(a, b)
+}
+
+fn predict(x: &[Vec<f64>], w: &[f64]) -> Vec<f64> {
+    x.iter().map(|r| r.iter().zip(w).map(|(a, b)| a * b).sum()).collect()
+}
+
+fn r2(y: &[f64], p: &[f64]) -> f64 {
+    let mu = y.iter().sum::<f64>() / y.len() as f64;
+    let ss_tot: f64 = y.iter().map(|t| (t - mu).powi(2)).sum();
+    1.0 - y.iter().zip(p).map(|(t, q)| (t - q).powi(2)).sum::<f64>() / ss_tot
+}
+
+fn pearson(a: &[f64], b: &[f64]) -> f64 {
+    let n = a.len() as f64;
+    let (ma, mb) = (a.iter().sum::<f64>() / n, b.iter().sum::<f64>() / n);
+    let cov: f64 = a.iter().zip(b).map(|(x, y)| (x - ma) * (y - mb)).sum();
+    let va: f64 = a.iter().map(|x| (x - ma).powi(2)).sum();
+    let vb: f64 = b.iter().map(|y| (y - mb).powi(2)).sum();
+    cov / (va * vb).sqrt()
+}
+
+// Fit on `fit`, choosing lambda on an inner 80/20 split; return test predictions.
+fn readout(fx: &[Vec<f64>], fy: &[f64], tx: &[Vec<f64>]) -> Vec<f64> {
+    let (zf, zt) = standardize(fx, tx);
+    let cut = fy.len() * 4 / 5;
+    let best = [1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0].iter().copied().max_by(|&a, &b| {
+        let s = |l: f64| r2(&fy[cut..], &predict(&zf[cut..], &ridge_fit(&zf[..cut], &fy[..cut], l)));
+        s(a).partial_cmp(&s(b)).unwrap()
+    }).unwrap();
+    predict(&zt, &ridge_fit(&zf, fy, best))
+}
+
+fn bootstrap_margin(y: &[f64], p_self: &[f64], p_cross: &[f64], seed: u64) -> (f64, f64) {
+    let mut rng = StdRng::seed_from_u64(seed);
+    let n = y.len();
+    let mut d: Vec<f64> = (0..1000).map(|_| {
+        let idx: Vec<usize> = (0..n).map(|_| rng.gen_range(0..n)).collect();
+        let pick = |v: &[f64]| idx.iter().map(|&i| v[i]).collect::<Vec<_>>();
+        let yy = pick(y);
+        r2(&yy, &pick(p_self)) - r2(&yy, &pick(p_cross))
+    }).collect();
+    d.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    (d[25], d[974])
+}
+
+fn main() {
+    let cfg = parse_args();
+    let raw = load_training_data(&cfg.input);
+    let chars = build_vocab(&raw);
+    let vocab = chars.len() + 1;
+    let mut names: Vec<&str> = raw.lines().filter(|l| !l.trim().is_empty()).collect();
+    names.shuffle(&mut StdRng::seed_from_u64(cfg.seed));
+    let (probe_names, train_names) = names.split_at(cfg.probe);
+    println!("names: {} train, {} probe (unseen by both models); emb {} layer {} head {} ctx {}; {} steps",
+             train_names.len(), probe_names.len(), cfg.emb, cfg.layer, cfg.head, cfg.ctx, cfg.steps);
+
+    let (a, b) = (seeded_gpt(cfg.seed * 2 + 1, vocab, &cfg), seeded_gpt(cfg.seed * 2 + 2, vocab, &cfg));
+    println!("params per model: {}", a.params().len());
+    let ema_a = train(&a, train_names, &chars, &cfg, 1, "A");
+    let ema_b = train(&b, train_names, &chars, &cfg, 2, "B");
+
+    let t0 = Instant::now();
+    let (pa, pb): (Vec<_>, Vec<_>) = probe_names.iter()
+        .map(|n| (probe(&a, n, &chars, &cfg), probe(&b, n, &chars, &cfg))).unzip();
+    eprintln!("  probed {} names in {:.0}s", probe_names.len(), t0.elapsed().as_secs_f64());
+    let (loss_a, feat_a): (Vec<f64>, Vec<Vec<f64>>) = pa.into_iter().unzip();
+    let (loss_b, feat_b): (Vec<f64>, Vec<Vec<f64>>) = pb.into_iter().unzip();
+
+    let text_len: Vec<Vec<f64>> = probe_names.iter().map(|n| {
+        let l = n.chars().count() as f64; vec![l, l * l] }).collect();
+    let text_bag: Vec<Vec<f64>> = probe_names.iter().map(|n| {
+        let mut v = vec![0.0; chars.len()];
+        for c in n.chars() { v[chars.iter().position(|&x| x == c).unwrap()] += 1.0; }
+        v }).collect();
+
+    let h = cfg.probe / 2;
+    let split = |v: &Vec<Vec<f64>>| (v[..h].to_vec(), v[h..].to_vec());
+    let mut report = serde_json::Map::new();
+    println!("\nloss on unseen names: A mean {:.4}, B mean {:.4}; A~B per-name r = {:.3}",
+             loss_a.iter().sum::<f64>() / loss_a.len() as f64,
+             loss_b.iter().sum::<f64>() / loss_b.len() as f64, pearson(&loss_a, &loss_b));
+    println!("\n{:<10} {:<34} {:>7} {:>7}", "target", "predictor", "R2", "r");
+    for (tname, y, own, other) in [("A's loss", &loss_a, &feat_a, &feat_b),
+                                    ("B's loss", &loss_b, &feat_b, &feat_a)] {
+        let (fy, ty) = (&y[..h], &y[h..]);
+        let preds = [("self (own hidden states)", own), ("cross (sibling's hidden states)", other),
+                     ("length baseline", &text_len), ("bag-of-characters baseline", &text_bag)]
+            .map(|(label, feats)| {
+                let (fx, tx) = split(feats);
+                (label, readout(&fx, fy, &tx))
+            });
+        let mut rows = serde_json::Map::new();
+        for (label, p) in &preds {
+            let (rr, pr) = (r2(ty, p), pearson(ty, p));
+            println!("{:<10} {:<34} {:>7.3} {:>7.3}", tname, label, rr, pr);
+            rows.insert(label.to_string(), serde_json::json!({"r2": rr, "pearson": pr}));
+        }
+        let margin = r2(ty, &preds[0].1) - r2(ty, &preds[1].1);
+        let (lo, hi) = bootstrap_margin(ty, &preds[0].1, &preds[1].1, cfg.seed);
+        println!("{:<10} privileged-access margin (self - cross R2): {:+.3}  95% CI [{:+.3}, {:+.3}]\n",
+                 tname, margin, lo, hi);
+        rows.insert("margin".into(), serde_json::json!({"self_minus_cross_r2": margin, "ci95": [lo, hi]}));
+        report.insert(tname.into(), serde_json::Value::Object(rows));
+    }
+    let out = serde_json::json!({
+        "config": {"steps": cfg.steps, "emb": cfg.emb, "layer": cfg.layer, "head": cfg.head,
+                   "ctx": cfg.ctx, "ff": cfg.ff, "lr": cfg.lr, "probe": cfg.probe, "seed": cfg.seed},
+        "train_loss_ema": {"A": ema_a, "B": ema_b},
+        "loss_correlation_A_B": pearson(&loss_a, &loss_b),
+        "results": report,
+    });
+    let path = format!("results/self_report_{}.json", chrono::Local::now().format("%Y%m%d_%H%M%S"));
+    std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).unwrap();
+    println!("wrote {path}");
+}
