@@ -1,0 +1,188 @@
+{
+  "base_train_loss_ema": 2.332542837202998,
+  "config": {
+    "ctx": 16,
+    "emb": 16,
+    "head": 4,
+    "layer": 2,
+    "probe": 2000,
+    "report_steps": 10000,
+    "rho": [
+      0.0,
+      0.5,
+      0.9,
+      1.0
+    ],
+    "seed": 9,
+    "stage": 4,
+    "steps": 10000
+  },
+  "stage4": {
+    "bins": 5,
+    "inject_layer": 0,
+    "report_steps": 10000,
+    "runs": [
+      {
+        "max_abs_report_diff": 3.985499001661816,
+        "rho": 0.0,
+        "twins": {
+          "A (own channel)": {
+            "acc_vs_cue": 0.19,
+            "acc_vs_sigma_bin": 0.681,
+            "probe_lm_loss_noisy": 2.467099552273509,
+            "slope_cue": 0.008645680372589308,
+            "slope_cue_ci95": [
+              -0.006534635567530021,
+              0.023307463675735243
+            ],
+            "slope_sigma_bin": 0.8608284066405504,
+            "slope_sigma_ci95": [
+              0.8483259058440586,
+              0.8730600526185417
+            ],
+            "train_lm_ema": 2.492952362976518,
+            "train_report_ce_ema": 0.7092771148049049
+          },
+          "B (situation)": {
+            "acc_vs_cue": 0.995,
+            "acc_vs_sigma_bin": 0.196,
+            "probe_lm_loss_noisy": 2.437274924346342,
+            "slope_cue": 0.9980152051938781,
+            "slope_cue_ci95": [
+              0.9971343784910369,
+              0.9987931836053107
+            ],
+            "slope_sigma_bin": 0.00016854193802782273,
+            "slope_sigma_ci95": [
+              -0.002841433178825695,
+              0.00290810601267519
+            ],
+            "train_lm_ema": 2.4727250751198833,
+            "train_report_ce_ema": 0.008703201181253074
+          }
+        }
+      },
+      {
+        "max_abs_report_diff": 3.8928610026366117,
+        "rho": 0.5,
+        "twins": {
+          "A (own channel)": {
+            "acc_vs_cue": 0.4705,
+            "acc_vs_sigma_bin": 0.525,
+            "probe_lm_loss_noisy": 2.4372633077132786,
+            "slope_cue": 0.08551856129814715,
+            "slope_cue_ci95": [
+              0.06602755978507152,
+              0.10437447678654614
+            ],
+            "slope_sigma_bin": 0.8023779891206396,
+            "slope_sigma_ci95": [
+              0.7879240374242462,
+              0.8164021923477495
+            ],
+            "train_lm_ema": 2.4508947722582333,
+            "train_report_ce_ema": 0.6564556382564308
+          },
+          "B (situation)": {
+            "acc_vs_cue": 0.9995,
+            "acc_vs_sigma_bin": 0.1945,
+            "probe_lm_loss_noisy": 2.436700748797637,
+            "slope_cue": 0.9978855125416167,
+            "slope_cue_ci95": [
+              0.9971797207560936,
+              0.9985140103090223
+            ],
+            "slope_sigma_bin": -0.0009417360640550285,
+            "slope_sigma_ci95": [
+              -0.0036017298954207798,
+              0.0011742856639743932
+            ],
+            "train_lm_ema": 2.460325909613278,
+            "train_report_ce_ema": 0.009652971653043164
+          }
+        }
+      },
+      {
+        "max_abs_report_diff": 3.760416889339272,
+        "rho": 0.9,
+        "twins": {
+          "A (own channel)": {
+            "acc_vs_cue": 0.9445,
+            "acc_vs_sigma_bin": 0.2185,
+            "probe_lm_loss_noisy": 2.4540416952717,
+            "slope_cue": 0.7571246773340022,
+            "slope_cue_ci95": [
+              0.7353557520951758,
+              0.778031545040504
+            ],
+            "slope_sigma_bin": 0.12072345989556105,
+            "slope_sigma_ci95": [
+              0.10224488055245023,
+              0.13829542101985068
+            ],
+            "train_lm_ema": 2.466577998174645,
+            "train_report_ce_ema": 0.42303190364175774
+          },
+          "B (situation)": {
+            "acc_vs_cue": 0.994,
+            "acc_vs_sigma_bin": 0.1945,
+            "probe_lm_loss_noisy": 2.4325955723189225,
+            "slope_cue": 0.9893210967448693,
+            "slope_cue_ci95": [
+              0.9860810935167467,
+              0.9923845863104472
+            ],
+            "slope_sigma_bin": 0.009053597310759475,
+            "slope_sigma_ci95": [
+              0.0046373522743979505,
+              0.01365135258039027
+            ],
+            "train_lm_ema": 2.4606180148153998,
+            "train_report_ce_ema": 0.022155217868368826
+          }
+        }
+      },
+      {
+        "max_abs_report_diff": 0.0,
+        "rho": 1.0,
+        "twins": {
+          "A (own channel)": {
+            "acc_vs_cue": 0.987,
+            "acc_vs_sigma_bin": 0.197,
+            "probe_lm_loss_noisy": 2.4338492574691606,
+            "slope_cue": 0.9811607551726447,
+            "slope_cue_ci95": [
+              0.9745705839455372,
+              0.986784062345935
+            ],
+            "slope_sigma_bin": 0.013234957921850006,
+            "slope_sigma_ci95": [
+              0.006203544468347969,
+              0.020415269807416436
+            ],
+            "train_lm_ema": 2.4702488643733207,
+            "train_report_ce_ema": 0.0020433594448702103
+          },
+          "B (situation)": {
+            "acc_vs_cue": 0.987,
+            "acc_vs_sigma_bin": 0.197,
+            "probe_lm_loss_noisy": 2.4338492574691606,
+            "slope_cue": 0.9811607551726447,
+            "slope_cue_ci95": [
+              0.9745705839455372,
+              0.986784062345935
+            ],
+            "slope_sigma_bin": 0.013234957921850006,
+            "slope_sigma_ci95": [
+              0.006203544468347969,
+              0.020415269807416436
+            ],
+            "train_lm_ema": 2.4702488643733207,
+            "train_report_ce_ema": 0.0020433594448702103
+          }
+        }
+      }
+    ],
+    "sigma_max": 1.0
+  }
+}
