@@ -33,14 +33,14 @@ struct Cfg {
     steps: usize, emb: usize, layer: usize, head: usize, ctx: usize, ff: usize,
     lr: f64, probe: usize, seed: u64, input: String,
     stage: usize, inject_layer: usize, sigma_max: f64,
-    rho: Vec<f64>, report_steps: usize,
+    rho: Vec<f64>, report_steps: usize, twin: String,
 }
 
 fn parse_args() -> Cfg {
     let mut c = Cfg { steps: 4000, emb: 16, layer: 2, head: 4, ctx: 16, ff: 4, lr: 0.01,
                       probe: 2000, seed: 7, input: "input.txt".into(),
                       stage: 1, inject_layer: 0, sigma_max: 1.0,
-                      rho: vec![0.0, 0.5, 0.9, 1.0], report_steps: 10000 };
+                      rho: vec![0.0, 0.5, 0.9, 1.0], report_steps: 10000, twin: "ab".into() };
     let a: Vec<String> = std::env::args().collect();
     let mut i = 1;
     while i + 1 < a.len() {
@@ -56,6 +56,7 @@ fn parse_args() -> Cfg {
             "--sigma-max" => c.sigma_max = v.parse().unwrap(),
             "--rho" => c.rho = v.split(',').map(|x| x.parse().unwrap()).collect(),
             "--report-steps" => c.report_steps = v.parse().unwrap(),
+            "--twin" => c.twin = v.clone(),
             other => panic!("unknown flag {other}"),
         }
         i += 2;
@@ -415,6 +416,20 @@ fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
          histories differ only counterfactually, which no behavioural test shows.
     Run plan: seeds 7, 8, 9; --steps 10000 (base) --report-steps 10000 --probe 2000;
     rho 0, 0.5, 0.9, 1; a prediction holds if it holds for all three seeds.
+    Result (7ee6995): P1-P3 held for all three seeds.
+
+    Crossover sweep (fixed after 7ee6995, before any sweep run). Twin A only,
+    rho = 0.50, 0.55, ..., 0.90, seeds 7, 8, 9, same steps; one job per (seed, rho)
+    with --twin a. rho* is where A's slope on c minus its slope on s changes sign,
+    by linear interpolation between adjacent grid points.
+      P4 matching: A switches to the cue when the cue predicts its target better
+         than its own-state reading does. The cue's accuracy is rho + (1 - rho)/5;
+         A's own-state accuracy is its rho = 0 accuracy (0.668, 0.679, 0.681 for
+         seeds 7, 8, 9), so predicted rho* = (acc - 0.2) / 0.8 = 0.585, 0.599,
+         0.601. P4 holds if every seed's rho* is within 0.075 of its prediction.
+      Check: the sweep runs on a different machine (x86) from stage 4 (arm64), so
+         rho 0.5 and 0.9 are reruns; their slopes should fall inside the stage-4
+         runs' 95% intervals.
 */
 fn clone_gpt(m: &GPT) -> GPT {
     let c = |x: &Mat2| x.iter().map(|r| r.iter().map(|v| Val::new(v.data())).collect()).collect::<Mat2>();
@@ -510,7 +525,10 @@ fn stage4(base: &GPT, train_names: &[&str], probe_names: &[&str], chars: &[char]
           ex: &Extra) -> serde_json::Value {
     let mut runs = vec![];
     for &rho in &cfg.rho {
-        let twins = [("A (own channel)", clone_gpt(base), true), ("B (situation)", clone_gpt(base), false)];
+        // --twin a / b / ab: which twins to train (one job per twin for parallel runs)
+        let twins: Vec<_> = [("A (own channel)", true), ("B (situation)", false)].into_iter()
+            .filter(|(t, _)| cfg.twin.contains(&t[..1].to_lowercase()))
+            .map(|(t, own)| (t, clone_gpt(base), own)).collect();
         let mut rows = serde_json::Map::new();
         let mut reports: Vec<Vec<f64>> = vec![];
         println!("\nstage 4, rho = {rho}: cue = sigma's bin with prob rho in training; decoupled at test");
@@ -551,8 +569,9 @@ fn stage4(base: &GPT, train_names: &[&str], probe_names: &[&str], chars: &[char]
                 "train_lm_ema": lm_ema, "train_report_ce_ema": rep_ema}));
             reports.push(e);
         }
-        let diff = reports[0].iter().zip(&reports[1]).map(|(a, b)| (a - b).abs()).fold(0.0, f64::max);
-        println!("max |E_A - E_B| over probe names: {diff:.2e}");
+        let diff = (reports.len() == 2).then(|| reports[0].iter().zip(&reports[1])
+            .map(|(a, b)| (a - b).abs()).fold(0.0, f64::max));
+        if let Some(d) = diff { println!("max |E_A - E_B| over probe names: {d:.2e}"); }
         runs.push(serde_json::json!({"rho": rho, "twins": rows, "max_abs_report_diff": diff}));
     }
     serde_json::json!({"inject_layer": cfg.inject_layer, "sigma_max": cfg.sigma_max, "bins": BINS,
@@ -579,9 +598,11 @@ fn main() {
         let out = serde_json::json!({
             "config": {"stage": 4, "steps": cfg.steps, "emb": cfg.emb, "layer": cfg.layer,
                        "head": cfg.head, "ctx": cfg.ctx, "probe": cfg.probe, "seed": cfg.seed,
-                       "rho": cfg.rho, "report_steps": cfg.report_steps},
+                       "rho": cfg.rho, "report_steps": cfg.report_steps, "twin": cfg.twin},
             "base_train_loss_ema": ema, "stage4": res});
-        let path = format!("results/self_twins_s{}_{}.json", cfg.seed,
+        let tag = if cfg.twin == "ab" { String::new() } else {
+            format!("r{}_{}_", cfg.rho.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("-"), cfg.twin) };
+        let path = format!("results/self_twins_s{}_{tag}{}.json", cfg.seed,
                            chrono::Local::now().format("%Y%m%d_%H%M%S"));
         std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).unwrap();
         println!("wrote {path}");
