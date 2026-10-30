@@ -430,6 +430,9 @@ fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
       Check: the sweep runs on a different machine (x86) from stage 4 (arm64), so
          rho 0.5 and 0.9 are reruns; their slopes should fall inside the stage-4
          runs' 95% intervals.
+    Sweep result (results/stage4_sweep, scripts/stage4_crossover.py): P4 failed,
+    rho* = 0.62, 0.73, 0.81 against 0.59-0.60 predicted; the check failed at rho 0.9
+    for seeds 7 and 9 (the intervals cover test names, not training runs).
 */
 fn clone_gpt(m: &GPT) -> GPT {
     let c = |x: &Mat2| x.iter().map(|r| r.iter().map(|v| Val::new(v.data())).collect()).collect::<Mat2>();
