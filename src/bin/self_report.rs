@@ -451,6 +451,9 @@ fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
          half-widths of the slopes are about 0.01-0.02).
       P7 rho still matters: pooled over bases and runs, the fraction of
          cue-anchored runs at rho 0.80 exceeds that at rho 0.60 by at least 0.30.
+    Band result (results/stage4_band): P5-P7 held. Every base is mixed at rho 0.70;
+    the within-cell SD of gap is 0.217 against bootstrap half-widths of 0.024;
+    the cue-anchored fraction rises from 0.22 at 0.60 to 0.89 at 0.80.
 */
 fn clone_gpt(m: &GPT) -> GPT {
     let c = |x: &Mat2| x.iter().map(|r| r.iter().map(|v| Val::new(v.data())).collect()).collect::<Mat2>();
