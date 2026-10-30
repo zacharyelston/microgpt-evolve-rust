@@ -34,13 +34,15 @@ struct Cfg {
     lr: f64, probe: usize, seed: u64, input: String,
     stage: usize, inject_layer: usize, sigma_max: f64,
     rho: Vec<f64>, report_steps: usize, twin: String,
+    train_seed: Option<u64>, base_file: Option<String>,
 }
 
 fn parse_args() -> Cfg {
     let mut c = Cfg { steps: 4000, emb: 16, layer: 2, head: 4, ctx: 16, ff: 4, lr: 0.01,
                       probe: 2000, seed: 7, input: "input.txt".into(),
                       stage: 1, inject_layer: 0, sigma_max: 1.0,
-                      rho: vec![0.0, 0.5, 0.9, 1.0], report_steps: 10000, twin: "ab".into() };
+                      rho: vec![0.0, 0.5, 0.9, 1.0], report_steps: 10000, twin: "ab".into(),
+                      train_seed: None, base_file: None };
     let a: Vec<String> = std::env::args().collect();
     let mut i = 1;
     while i + 1 < a.len() {
@@ -57,6 +59,8 @@ fn parse_args() -> Cfg {
             "--rho" => c.rho = v.split(',').map(|x| x.parse().unwrap()).collect(),
             "--report-steps" => c.report_steps = v.parse().unwrap(),
             "--twin" => c.twin = v.clone(),
+            "--train-seed" => c.train_seed = Some(v.parse().unwrap()),
+            "--base-file" => c.base_file = Some(v.clone()),
             other => panic!("unknown flag {other}"),
         }
         i += 2;
@@ -433,6 +437,20 @@ fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
     Sweep result (results/stage4_sweep, scripts/stage4_crossover.py): P4 failed,
     rho* = 0.62, 0.73, 0.81 against 0.59-0.60 predicted; the check failed at rho 0.9
     for seeds 7 and 9 (the intervals cover test names, not training runs).
+
+    Band sweep (fixed after 0199c57, before any band run). Twin A, on cyber2 (x86),
+    rho = 0.60, 0.65, 0.70, 0.75, 0.80; bases 7, 8, 9 (pretrained once each, reused
+    with --base-file); training seeds 101-105 (--train-seed), plus the sweep's own
+    run (training seed = base seed) as a sixth run per cell. Same steps and test
+    set. gap = slope on c - slope on s; a run is cue-anchored if gap > 0.
+    Scored by scripts/stage4_band.py.
+      P5 run dependence: for at least one rho, every base's six runs include both
+         a self-anchored and a cue-anchored run.
+      P6 run variation dominates test sampling: the mean over (base, rho) cells of
+         the SD of gap across the six runs is at least 0.10 (the bootstrap
+         half-widths of the slopes are about 0.01-0.02).
+      P7 rho still matters: pooled over bases and runs, the fraction of
+         cue-anchored runs at rho 0.80 exceeds that at rho 0.60 by at least 0.30.
 */
 fn clone_gpt(m: &GPT) -> GPT {
     let c = |x: &Mat2| x.iter().map(|r| r.iter().map(|v| Val::new(v.data())).collect()).collect::<Mat2>();
@@ -479,12 +497,15 @@ fn train_report(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra, 
     let params = m.params();
     let (mut mo, mut ve) = (vec![0.; params.len()], vec![0.; params.len()]);
     let (b1, b2, eps) = (0.85, 0.99, 1e-8);
+    // --train-seed varies the report-training run (name order, noise, cues) while the
+    // base model and the test set stay fixed by --seed
+    let ts = cfg.train_seed.unwrap_or(cfg.seed);
     let mut order: Vec<usize> = (0..names.len()).collect();
-    order.shuffle(&mut StdRng::seed_from_u64(cfg.seed ^ 0x4ead));
+    order.shuffle(&mut StdRng::seed_from_u64(ts ^ 0x4ead));
     let (mut ema_lm, mut ema_rep, t0) = (0.0, 0.0, Instant::now());
     for step in 0..cfg.report_steps {
         // the same draws for both twins: only the target differs
-        let mut rng = StdRng::seed_from_u64(cfg.seed * 7_000_003 + step as u64);
+        let mut rng = StdRng::seed_from_u64(ts * 7_000_003 + step as u64);
         let (sigma, s, c) = draw4(&mut rng, rho, cfg.sigma_max);
         let mut noise = Noise { layer: cfg.inject_layer, sigma, rng: &mut rng };
         let (lm, rep) = run4(m, names[order[step % order.len()]], chars, cfg, ex, c, &mut noise);
@@ -596,15 +617,35 @@ fn main() {
         let ex = Extra { cue0: vocab, rep0: vocab + BINS };
         let base = seeded_gpt(cfg.seed * 2 + 1, vocab + 2 * BINS, &cfg);
         println!("params per model: {}", base.params().len());
-        let ema = train(&base, train_names, &chars, &cfg, 1, "base");
+        // --base-file: reuse a pretrained base (exact f64 round trip) or save this one
+        let saved = cfg.base_file.as_ref().filter(|p| std::path::Path::new(p).exists());
+        let ema = if let Some(p) = saved {
+            let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap();
+            assert_eq!(v["seed"].as_u64(), Some(cfg.seed), "{p} is another seed's base");
+            for (q, x) in base.params().iter().zip(v["params"].as_array().unwrap()) {
+                q.0.borrow_mut().data = x.as_f64().unwrap();
+            }
+            eprintln!("  [base] loaded {p}");
+            v["ema"].as_f64().unwrap()
+        } else {
+            let ema = train(&base, train_names, &chars, &cfg, 1, "base");
+            if let Some(p) = &cfg.base_file {
+                let params: Vec<f64> = base.params().iter().map(|q| q.data()).collect();
+                std::fs::write(p, serde_json::json!({"seed": cfg.seed, "steps": cfg.steps,
+                                                     "ema": ema, "params": params}).to_string()).unwrap();
+            }
+            ema
+        };
         let res = stage4(&base, train_names, probe_names, &chars, &cfg, &ex);
         let out = serde_json::json!({
             "config": {"stage": 4, "steps": cfg.steps, "emb": cfg.emb, "layer": cfg.layer,
                        "head": cfg.head, "ctx": cfg.ctx, "probe": cfg.probe, "seed": cfg.seed,
-                       "rho": cfg.rho, "report_steps": cfg.report_steps, "twin": cfg.twin},
+                       "rho": cfg.rho, "report_steps": cfg.report_steps, "twin": cfg.twin,
+                       "train_seed": cfg.train_seed},
             "base_train_loss_ema": ema, "stage4": res});
-        let tag = if cfg.twin == "ab" { String::new() } else {
+        let mut tag = if cfg.twin == "ab" { String::new() } else {
             format!("r{}_{}_", cfg.rho.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("-"), cfg.twin) };
+        if let Some(t) = cfg.train_seed { tag += &format!("t{t}_"); }
         let path = format!("results/self_twins_s{}_{tag}{}.json", cfg.seed,
                            chrono::Local::now().format("%Y%m%d_%H%M%S"));
         std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).unwrap();
