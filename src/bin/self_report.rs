@@ -454,6 +454,12 @@ fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
     Band result (results/stage4_band): P5-P7 held. Every base is mixed at rho 0.70;
     the within-cell SD of gap is 0.217 against bootstrap half-widths of 0.024;
     the cue-anchored fraction rises from 0.22 at 0.60 to 0.89 at 0.80.
+    Not pre-registered (scripts/stage4_loss_anchor.py, after the band result): at
+    every rho the self-anchored runs end with lower training report loss than the
+    cue-anchored ones (0.61-0.64 against 0.78-0.92 at rho 0.60-0.70; Spearman of gap
+    with loss +0.76 to +0.82). Cue-anchored runs sit just under the cue-only loss
+    (1.07, 0.98, 0.88), so they barely use their own state. The objective prefers
+    the own-state anchor across the band, yet most runs at rho >= 0.70 take the cue.
 */
 fn clone_gpt(m: &GPT) -> GPT {
     let c = |x: &Mat2| x.iter().map(|r| r.iter().map(|v| Val::new(v.data())).collect()).collect::<Mat2>();
