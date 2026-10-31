@@ -35,6 +35,7 @@ struct Cfg {
     stage: usize, inject_layer: usize, sigma_max: f64,
     rho: Vec<f64>, report_steps: usize, twin: String,
     train_seed: Option<u64>, base_file: Option<String>,
+    restart_steps: usize, trace: usize,
 }
 
 fn parse_args() -> Cfg {
@@ -42,7 +43,7 @@ fn parse_args() -> Cfg {
                       probe: 2000, seed: 7, input: "input.txt".into(),
                       stage: 1, inject_layer: 0, sigma_max: 1.0,
                       rho: vec![0.0, 0.5, 0.9, 1.0], report_steps: 10000, twin: "ab".into(),
-                      train_seed: None, base_file: None };
+                      train_seed: None, base_file: None, restart_steps: 0, trace: 0 };
     let a: Vec<String> = std::env::args().collect();
     let mut i = 1;
     while i + 1 < a.len() {
@@ -61,6 +62,8 @@ fn parse_args() -> Cfg {
             "--twin" => c.twin = v.clone(),
             "--train-seed" => c.train_seed = Some(v.parse().unwrap()),
             "--base-file" => c.base_file = Some(v.clone()),
+            "--restart-steps" => c.restart_steps = v.parse().unwrap(),
+            "--trace" => c.trace = v.parse().unwrap(),
             other => panic!("unknown flag {other}"),
         }
         i += 2;
@@ -460,6 +463,30 @@ fn bootstrap_r2(y: &[f64], p: &[f64], seed: u64) -> (f64, f64) {
     with loss +0.76 to +0.82). Cue-anchored runs sit just under the cue-only loss
     (1.07, 0.98, 0.88), so they barely use their own state. The objective prefers
     the own-state anchor across the band, yet most runs at rho >= 0.70 take the cue.
+
+    Long runs (fixed after e036e5a, before any long run). Twin A, rho 0.65 and 0.70,
+    bases 7, 8, 9, training seeds 101-105 plus the base seed: the 36 band runs at
+    these rho. Phase 1 replays each band run exactly (10000 report steps, learning
+    rate decaying to 0). Phase 2 (--restart-steps 30000) continues the same run for
+    30000 more steps with the learning rate restarted at --lr and decaying to 0
+    again; Adam state carries over. --trace 500 measures, on the first 500 probe
+    names, the slopes (decoupled test) and the report loss on coupled draws at the
+    run's rho (target sigma's bin), after steps 250, 500, 1000, every 1000 to 10000,
+    then every 2000 to 40000. The full 2000-name test runs at 10000 and at 40000.
+    A run is cue-anchored if gap >= +0.10 and self-anchored if gap <= -0.10; at
+    10000 the band has 14 cue-anchored and 17 self-anchored runs among the 36.
+    Informed by the band logs: every run's report loss is near the cue-only loss by
+    step 1000, and the self-anchored runs' loss falls below it from about step 3000.
+    Scored by scripts/stage4_long.py.
+      Check: phase 1 is the band run, so the full test at 10000 matches the band
+         result exactly (slopes, accuracies, training EMAs) in all 36 runs.
+      P8 cue first: at step 1000, at least 30 of the 36 runs have gap > 0 (trace).
+      P9 one-way pull: the objective favours the own state, so phase 2 moves runs
+         toward it and not away. At least 15 of the 17 self-anchored runs still
+         have gap <= 0 at 40000, and at least 11 of the 14 cue-anchored runs have
+         a lower gap at 40000 than at 10000.
+      P10 the fork is a finite-training effect: at least 7 of the 14 cue-anchored
+         runs have gap <= 0 at 40000.
 */
 fn clone_gpt(m: &GPT) -> GPT {
     let c = |x: &Mat2| x.iter().map(|r| r.iter().map(|v| Val::new(v.data())).collect()).collect::<Mat2>();
@@ -501,8 +528,16 @@ fn run4(m: &GPT, name: &str, chars: &[char], cfg: &Cfg, ex: &Extra, cue: usize,
     (&loss * &Val::new(((toks.len() - 2) as f64).recip()), rep)
 }
 
-fn train_report(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra, rho: f64,
-                own_gate: bool, tag: &str) -> (f64, f64) {
+// Steps after which --trace measures a run: 250, 500, every 1000 to report_steps, then
+// every 2000 through the restart phase, and the end of each phase.
+fn traced(k: usize, cfg: &Cfg) -> bool {
+    let r = cfg.report_steps;
+    k == 250 || k == 500 || k == r || k == r + cfg.restart_steps
+        || (k < r && k % 1000 == 0) || (k > r && (k - r) % 2000 == 0)
+}
+
+fn train_report(m: &GPT, names: &[&str], probe_names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra,
+                rho: f64, own_gate: bool, tag: &str) -> (f64, f64, serde_json::Map<String, serde_json::Value>) {
     let params = m.params();
     let (mut mo, mut ve) = (vec![0.; params.len()], vec![0.; params.len()]);
     let (b1, b2, eps) = (0.85, 0.99, 1e-8);
@@ -512,7 +547,9 @@ fn train_report(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra, 
     let mut order: Vec<usize> = (0..names.len()).collect();
     order.shuffle(&mut StdRng::seed_from_u64(ts ^ 0x4ead));
     let (mut ema_lm, mut ema_rep, t0) = (0.0, 0.0, Instant::now());
-    for step in 0..cfg.report_steps {
+    let total = cfg.report_steps + cfg.restart_steps;
+    let (mut extra, mut trace) = (serde_json::Map::new(), vec![]);
+    for step in 0..total {
         // the same draws for both twins: only the target differs
         let mut rng = StdRng::seed_from_u64(ts * 7_000_003 + step as u64);
         let (sigma, s, c) = draw4(&mut rng, rho, cfg.sigma_max);
@@ -526,7 +563,10 @@ fn train_report(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra, 
         ema_rep = (1. - a) * ema_rep + a * rl.data();
         for p in &params { p.zero(); }
         loss.backward();
-        let lr = cfg.lr * (1. - step as f64 / cfg.report_steps as f64);
+        // --restart-steps: after report_steps the learning rate restarts at --lr and
+        // decays to 0 again over the restart phase; Adam state carries over
+        let lr = if step < cfg.report_steps { cfg.lr * (1. - step as f64 / cfg.report_steps as f64) }
+                 else { cfg.lr * (1. - (step - cfg.report_steps) as f64 / cfg.restart_steps as f64) };
         for (i, p) in params.iter().enumerate() {
             let g = p.grad();
             mo[i] = b1 * mo[i] + (1. - b1) * g;
@@ -534,12 +574,32 @@ fn train_report(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra, 
             let (mh, vh) = (mo[i] / (1. - b1.powi(step as i32 + 1)), ve[i] / (1. - b2.powi(step as i32 + 1)));
             p.0.borrow_mut().data -= lr * mh / (vh.sqrt() + eps);
         }
-        if step % 1000 == 0 || step + 1 == cfg.report_steps {
+        if step % 1000 == 0 || step + 1 == total {
             eprintln!("  [{tag}] step {step:5}  lm(ema) {ema_lm:.4}  report CE(ema) {ema_rep:.4}  {:.0}s",
                       t0.elapsed().as_secs_f64());
         }
+        // measurements only run the model forward with their own draws, so the
+        // training run is the same with or without them
+        let k = step + 1;
+        if cfg.trace > 0 && traced(k, cfg) {
+            let few = &probe_names[..cfg.trace.min(probe_names.len())];
+            let t = test4(m, few, chars, cfg, ex);
+            let v = val_ce4(m, few, chars, cfg, ex, rho, own_gate);
+            eprintln!("  [{tag}] trace {k:5}  slope s {:.3}  slope c {:.3}  gap {:+.3}  val report CE {v:.4}",
+                      t.bs, t.bc, t.bc - t.bs);
+            trace.push(serde_json::json!({"step": k, "slope_sigma_bin": t.bs, "slope_cue": t.bc,
+                                          "val_report_ce": v, "train_report_ce_ema": ema_rep,
+                                          "train_lm_ema": ema_lm}));
+        }
+        if cfg.restart_steps > 0 && k == cfg.report_steps {
+            // the full test where a run without the restart phase would stop
+            let t = test4(m, probe_names, chars, cfg, ex);
+            t.print(&format!("{tag} @{k}"));
+            extra.insert("at_report_steps".into(), t.json(ema_lm, ema_rep));
+        }
     }
-    (ema_lm, ema_rep)
+    if cfg.trace > 0 { extra.insert("trace".into(), trace.into()); }
+    (ema_lm, ema_rep, extra)
 }
 
 // OLS of y on [s, c, 1]; returns (slope on s, slope on c).
@@ -552,6 +612,64 @@ fn slopes(s: &[f64], c: &[f64], y: &[f64]) -> (f64, f64) {
 fn ci(mut v: Vec<f64>) -> [f64; 2] {
     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
     [v[25], v[974]]
+}
+
+// One decoupled test: slopes of the expected report on s and c, their bootstrap
+// intervals, argmax accuracy against each, the noisy LM loss, and the reports.
+struct Test4 { bs: f64, cs: [f64; 2], bc: f64, cc: [f64; 2], acc_s: f64, acc_c: f64, lm: f64, e: Vec<f64> }
+
+impl Test4 {
+    fn print(&self, tag: &str) {
+        println!("{:<18} {:>8.3} [{:+.3}, {:+.3}] {:>8.3} [{:+.3}, {:+.3}] {:>7.3} {:>7.3} {:>7.4}",
+                 tag, self.bs, self.cs[0], self.cs[1], self.bc, self.cc[0], self.cc[1],
+                 self.acc_s, self.acc_c, self.lm);
+    }
+    fn json(&self, lm_ema: f64, rep_ema: f64) -> serde_json::Value {
+        serde_json::json!({
+            "slope_sigma_bin": self.bs, "slope_sigma_ci95": self.cs, "slope_cue": self.bc,
+            "slope_cue_ci95": self.cc, "acc_vs_sigma_bin": self.acc_s, "acc_vs_cue": self.acc_c,
+            "probe_lm_loss_noisy": self.lm, "train_lm_ema": lm_ema, "train_report_ce_ema": rep_ema})
+    }
+}
+
+// sigma's bin and the cue drawn independently, the same draws for every model and step
+fn test4(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra) -> Test4 {
+    let (mut s, mut c, mut e, mut hit_s, mut hit_c, mut lm) = (vec![], vec![], vec![], 0, 0, 0.0);
+    for (i, n) in names.iter().enumerate() {
+        let mut rng = StdRng::seed_from_u64(cfg.seed * 9_000_011 + i as u64);
+        let (sigma, si, ci_) = draw4(&mut rng, 0.0, cfg.sigma_max);
+        let mut noise = Noise { layer: cfg.inject_layer, sigma, rng: &mut rng };
+        let (l, rep) = run4(m, n, chars, cfg, ex, ci_, &mut noise);
+        let p: Vec<f64> = softmax(&rep).iter().map(|v| v.data()).collect();
+        let k = (0..BINS).max_by(|&a, &b| p[a].partial_cmp(&p[b]).unwrap()).unwrap();
+        hit_s += (k == si) as usize;
+        hit_c += (k == ci_) as usize;
+        s.push(si as f64); c.push(ci_ as f64);
+        e.push(p.iter().enumerate().map(|(k, q)| k as f64 * q).sum());
+        lm += l.data();
+    }
+    let n = names.len();
+    let (bs, bc) = slopes(&s, &c, &e);
+    let mut brng = StdRng::seed_from_u64(cfg.seed ^ 0xb004);
+    let (vs, vc): (Vec<f64>, Vec<f64>) = (0..1000).map(|_| {
+        let idx: Vec<usize> = (0..n).map(|_| brng.gen_range(0..n)).collect();
+        let pick = |v: &[f64]| idx.iter().map(|&i| v[i]).collect::<Vec<_>>();
+        slopes(&pick(&s), &pick(&c), &pick(&e))
+    }).unzip();
+    Test4 { bs, cs: ci(vs), bc, cc: ci(vc), acc_s: hit_s as f64 / n as f64, acc_c: hit_c as f64 / n as f64,
+            lm: lm / n as f64, e }
+}
+
+// The report loss on held-out names with draws as in training (cue = sigma's bin with
+// prob rho), against the twin's own target.
+fn val_ce4(m: &GPT, names: &[&str], chars: &[char], cfg: &Cfg, ex: &Extra, rho: f64, own_gate: bool) -> f64 {
+    names.iter().enumerate().map(|(i, n)| {
+        let mut rng = StdRng::seed_from_u64(cfg.seed * 9_100_019 + i as u64);
+        let (sigma, s, c) = draw4(&mut rng, rho, cfg.sigma_max);
+        let mut noise = Noise { layer: cfg.inject_layer, sigma, rng: &mut rng };
+        let (_, rep) = run4(m, n, chars, cfg, ex, c, &mut noise);
+        -softmax(&rep)[if own_gate { s } else { c }].log().data()
+    }).sum::<f64>() / names.len() as f64
 }
 
 fn stage4(base: &GPT, train_names: &[&str], probe_names: &[&str], chars: &[char], cfg: &Cfg,
@@ -568,39 +686,14 @@ fn stage4(base: &GPT, train_names: &[&str], probe_names: &[&str], chars: &[char]
         println!("{:<18} {:>8} {:>18} {:>8} {:>18} {:>7} {:>7} {:>7}", "twin", "slope s", "95% CI",
                  "slope c", "95% CI", "acc s", "acc c", "LM");
         for (tag, m, own) in &twins {
-            let (lm_ema, rep_ema) = train_report(m, train_names, chars, cfg, ex, rho, *own,
-                                                 &format!("rho {rho} {}", &tag[..1]));
-            let (mut s, mut c, mut e, mut hit_s, mut hit_c, mut lm) = (vec![], vec![], vec![], 0, 0, 0.0);
-            for (i, n) in probe_names.iter().enumerate() {
-                let mut rng = StdRng::seed_from_u64(cfg.seed * 9_000_011 + i as u64);
-                let (sigma, si, ci_) = draw4(&mut rng, 0.0, cfg.sigma_max);
-                let mut noise = Noise { layer: cfg.inject_layer, sigma, rng: &mut rng };
-                let (l, rep) = run4(m, n, chars, cfg, ex, ci_, &mut noise);
-                let p: Vec<f64> = softmax(&rep).iter().map(|v| v.data()).collect();
-                let k = (0..BINS).max_by(|&a, &b| p[a].partial_cmp(&p[b]).unwrap()).unwrap();
-                hit_s += (k == si) as usize;
-                hit_c += (k == ci_) as usize;
-                s.push(si as f64); c.push(ci_ as f64);
-                e.push(p.iter().enumerate().map(|(k, q)| k as f64 * q).sum());
-                lm += l.data();
-            }
-            let n = probe_names.len();
-            let (bs, bc) = slopes(&s, &c, &e);
-            let mut brng = StdRng::seed_from_u64(cfg.seed ^ 0xb004);
-            let (vs, vc): (Vec<f64>, Vec<f64>) = (0..1000).map(|_| {
-                let idx: Vec<usize> = (0..n).map(|_| brng.gen_range(0..n)).collect();
-                let pick = |v: &[f64]| idx.iter().map(|&i| v[i]).collect::<Vec<_>>();
-                slopes(&pick(&s), &pick(&c), &pick(&e))
-            }).unzip();
-            let (cs, cc) = (ci(vs), ci(vc));
-            let (acc_s, acc_c) = (hit_s as f64 / n as f64, hit_c as f64 / n as f64);
-            println!("{:<18} {:>8.3} [{:+.3}, {:+.3}] {:>8.3} [{:+.3}, {:+.3}] {:>7.3} {:>7.3} {:>7.4}",
-                     tag, bs, cs[0], cs[1], bc, cc[0], cc[1], acc_s, acc_c, lm / n as f64);
-            rows.insert(tag.to_string(), serde_json::json!({
-                "slope_sigma_bin": bs, "slope_sigma_ci95": cs, "slope_cue": bc, "slope_cue_ci95": cc,
-                "acc_vs_sigma_bin": acc_s, "acc_vs_cue": acc_c, "probe_lm_loss_noisy": lm / n as f64,
-                "train_lm_ema": lm_ema, "train_report_ce_ema": rep_ema}));
-            reports.push(e);
+            let (lm_ema, rep_ema, extra) = train_report(m, train_names, probe_names, chars, cfg, ex, rho,
+                                                        *own, &format!("rho {rho} {}", &tag[..1]));
+            let t = test4(m, probe_names, chars, cfg, ex);
+            t.print(tag);
+            let mut row = t.json(lm_ema, rep_ema);
+            row.as_object_mut().unwrap().extend(extra);
+            rows.insert(tag.to_string(), row);
+            reports.push(t.e);
         }
         let diff = (reports.len() == 2).then(|| reports[0].iter().zip(&reports[1])
             .map(|(a, b)| (a - b).abs()).fold(0.0, f64::max));
@@ -608,7 +701,8 @@ fn stage4(base: &GPT, train_names: &[&str], probe_names: &[&str], chars: &[char]
         runs.push(serde_json::json!({"rho": rho, "twins": rows, "max_abs_report_diff": diff}));
     }
     serde_json::json!({"inject_layer": cfg.inject_layer, "sigma_max": cfg.sigma_max, "bins": BINS,
-                       "report_steps": cfg.report_steps, "runs": runs})
+                       "report_steps": cfg.report_steps, "restart_steps": cfg.restart_steps,
+                       "trace": cfg.trace, "runs": runs})
 }
 
 fn main() {
@@ -650,11 +744,12 @@ fn main() {
             "config": {"stage": 4, "steps": cfg.steps, "emb": cfg.emb, "layer": cfg.layer,
                        "head": cfg.head, "ctx": cfg.ctx, "probe": cfg.probe, "seed": cfg.seed,
                        "rho": cfg.rho, "report_steps": cfg.report_steps, "twin": cfg.twin,
-                       "train_seed": cfg.train_seed},
+                       "train_seed": cfg.train_seed, "restart_steps": cfg.restart_steps, "trace": cfg.trace},
             "base_train_loss_ema": ema, "stage4": res});
         let mut tag = if cfg.twin == "ab" { String::new() } else {
             format!("r{}_{}_", cfg.rho.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("-"), cfg.twin) };
         if let Some(t) = cfg.train_seed { tag += &format!("t{t}_"); }
+        if cfg.restart_steps > 0 { tag += &format!("x{}_", cfg.restart_steps); }
         let path = format!("results/self_twins_s{}_{tag}{}.json", cfg.seed,
                            chrono::Local::now().format("%Y%m%d_%H%M%S"));
         std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).unwrap();
